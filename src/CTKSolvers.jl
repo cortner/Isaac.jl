@@ -1,5 +1,8 @@
 module CTKSolvers
 
-# package code goes here
+export nsoli, dgmres
+
+include("fdkryloc.jl")
+include("nsoli.jl")
 
 end # module
