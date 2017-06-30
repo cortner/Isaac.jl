@@ -71,7 +71,7 @@ function nsoli{T}(x::Vector{T}, f;
    x_hist = Vector{T}[x]
 
    # Initialize parameters for the iterative methods, Check for optional inputs.
-   it_histx = zeros(maxit, 3)
+   it_histx = zeros(maxit+1, 3)
    # gmparms = [abs(etamax), lmaxit, parms(5), 1]; TODO: remove this
    eta = abs(etamax)
    n = length(x)
@@ -150,7 +150,7 @@ function nsoli{T}(x::Vector{T}, f;
 
       push!(x_hist, x)
       fnrm = norm(f0)
-      it_histx[itc+1, 1] = fnrm
+      it_histx[itc+1, 1] = fnrm     # TODO: there is a bug here when we reach too many iterations
 
       # How many function evaluations did this iteration require?
       it_histx[itc+1, 2] = it_histx[itc, 2] + inner_f_evals + iarm + 1

@@ -22,3 +22,27 @@ df2(x) = ForwardDiff.jacobian(f2, x)
 init2() = ones(n)
 randinit2() = ones(n) + 0.1 * (rand(n) - 0.5)
 push!(tests, (f2, df2, init2, randinit2, "H-equation"))
+
+
+# [3] MCP example by Josephy - stolen from NLsolve.jl
+f3(x) = [3*x[1]^2+2*x[1]*x[2]+2*x[2]^2+x[3]+3*x[4]-6,
+         2*x[1]^2+x[1]+x[2]^2+3*x[3]+2*x[4]-2,
+         3*x[1]^2+x[1]*x[2]+2*x[2]^2+2*x[3]+3*x[4]-1,
+         x[1]^2+3*x[2]^2+2*x[3]+3*x[4]-3 ]
+df3(x) = ForwardDiff.jacobian(f3, x)
+init3() = zeros(4)
+randinit3() =  [1.22474487, 0., 0., 0.5 ] + (rand(4)-0.5)
+push!(tests, (f3, df3, init3, randinit3, "Josephy"))
+
+
+
+# maybe add this one as well:
+# # From Nocedal & Wright, p. 288-289
+#
+# # Jacobian is singular at the starting point.
+# # Used to test the behavior of algorithms in that context.
+#
+# function f_sing!(x, fvec)
+#     fvec[1] = x[1]
+#     fvec[2] = 10*x[1]/(x[1]+convert(eltype(x), 0.1))+2*x[2]^2
+# end
