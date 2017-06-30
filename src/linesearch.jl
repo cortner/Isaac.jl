@@ -1,4 +1,6 @@
 
+# TODO: replace with with LineSearches or alternatively move into LineSearches
+
 """
 `function  parab3p(lambdac, lambdam, ff0, ffc, ffm) -> lambdap`
 
@@ -20,8 +22,7 @@ Apply three-point safeguarded parabolic model for a line search.
 
 * `sigma0 = .1`, `sigma1 = .5` : safeguarding bounds for the linesearch
 """
-function parab3p(lambdac, lambdam, ff0, ffc, ffm;
-                        sigma0 = 0.1, sigma1 = 0.5) # -> lambdap
+function parab3p(lambdac, lambdam, ff0, ffc, ffm; sigma0 = 0.1, sigma1 = 0.5)
    # compute coefficients of interpolation polynomial
    # p(lambda) = ff0 + (c1 lambda + c2 lambda^2)/d1
    # d1 = (lambdac - lambdam)*lambdac*lambdam < 0
@@ -37,7 +38,6 @@ function parab3p(lambdac, lambdam, ff0, ffc, ffm;
       return sigma0 * lambdac
    elseif lambdap > sigma1 * lambdac
       return sigma1 * lambdac
-   else
-      return lambdap
    end
-end 
+   return lambdap
+end

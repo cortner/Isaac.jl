@@ -18,19 +18,18 @@ Finite difference directional derivative, approximate f'(x) w
 
 based on a code by C. T. Kelley, April 1, 2003
 """
-function dirder(x, w, f, f0; h = 1e-7)  # -> z
+function dirder(x, w, f, f0; h = 1e-7)
    # initialise difference increment
    epsnew = h
    n = length(x)
    # scale the step
    if norm(w) == 0
-      z = zeros(n,1)
-      return
+      return zeros(n)
    end
    # Now scale the difference increment.
-   xs= dot(x, w) / norm(w)
+   xs = dot(x, w) / norm(w)
    if xs != 0.0
-      epsnew *= max(abs(xs),1.0) * sign(xs)
+      epsnew *= max(abs(xs), 1.0) * sign(xs)
    end
    epsnew /= norm(w)
    f1 = feval(f, x + epsnew * w)
@@ -45,13 +44,13 @@ end
 Apply a sequence of k Givens rotations, used within gmres codes.
 """
 function vrot = givapp(c, s, vin, k)
-   vrot = copy(vin)   # TODO: can we do this in-place?
+   vrot = copy(vin)                   # TODO: can we do this in-place?
    for i = 1:k
       w1 = c[i] * vrot[i] - s[i] * vrot[i+1]
       # Here's a modest change that makes the code work in complex
       # arithmetic. Thanks to Howard Elman for this.
       # w2 = s(i)*vrot(i)+c(i)*vrot(i+1);
-      w2 = s[i] * vrot[i] + conj(c[i]) * vrot[i+1]
+      w2 = s[i] * vrot[i] + c[i]' * vrot[i+1]
       vrot[i:i+1] = [w1, w2]
    end
    return vrot
@@ -89,12 +88,12 @@ GMRES linear equation solver for use in Newton-GMRES solver
 """
 function dgmres(f0, f, xc, errtol, kmax, reorth, x = zeros(f0))
    # The right side of the linear equation for the step is -f0.
-   b = -f0
+   b = - f0
    n = length(b)
-   r = -dirder(xc, x, f, f0) - f0
+   r = - dirder(xc, x, f, f0) - f0
 
    h = zeros(kmax, kmax)
-   v = zeros(n,kmax)
+   v = zeros(n, kmax)
    c = zeros(kmax+1)
    s = zeros(kmax+1)
    rho = norm(r)
@@ -163,7 +162,7 @@ function dgmres(f0, f, xc, errtol, kmax, reorth, x = zeros(f0))
 
       # Update the residual norm.
       rho = abs(g[k+1])
-      push!(error,rho)
+      push!(error, rho)
    end # end of the main while loop
 
    # At this point either k > kmax or rho < errtol.
