@@ -10,7 +10,6 @@ This code has been transcribed with permission from
 http://www4.ncsu.edu/~ctk/newton/SOLVERS/nsoli.m
 C. T. Kelley, April 27, 2001
 
-
 ### Required Input Parameters
 
 * x: initial iterate
@@ -85,6 +84,9 @@ function nsoli{T}(x::Vector{T}, f;
 
    fnrmo = 1.0      # old fnrm
    stop_tol = atol + rtol * fnrm
+
+   # TODO: replace this with a nice type collecting iteration information
+   outstat = zeros(1, 5)
    outstat[itc+1, :] = [itc, fnrm, 0, 0, 0]
 
    # main iteration loop
@@ -169,7 +171,8 @@ function nsoli{T}(x::Vector{T}, f;
          eta = max(etaold, 0.5 * stop_tol / fnrm)
       end
 
-      outstat[itc+1, :] = [itc fnrm inner_it_count rat iarm]
+      outstat = [outstat; [itc fnrm inner_it_count rat iarm]]
+      #  outstat[itc+1, :] = [itc fnrm inner_it_count rat iarm]
    end
    sol = x
    it_hist = it_histx[1:itc+1, :]

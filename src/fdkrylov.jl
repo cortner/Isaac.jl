@@ -32,7 +32,7 @@ function dirder(x, w, f, f0; h = 1e-7)
       epsnew *= max(abs(xs), 1.0) * sign(xs)
    end
    epsnew /= norm(w)
-   f1 = feval(f, x + epsnew * w)
+   f1 = f(x + epsnew * w)
    return (f1 - f0) / epsnew
 end
 
@@ -43,7 +43,7 @@ end
 
 Apply a sequence of k Givens rotations, used within gmres codes.
 """
-function vrot = givapp(c, s, vin, k)
+function givapp(c, s, vin, k)
    vrot = copy(vin)                   # TODO: can we do this in-place?
    for i = 1:k
       w1 = c[i] * vrot[i] - s[i] * vrot[i+1]
@@ -59,7 +59,7 @@ end
 
 
 """
-`function dgmres(f0, f, xc, errtol, kmax, reorth[, xinit]) -> x, error, total_iters`
+`function dgmres(f0, f, xc, errtol, kmax, [reorth, xinit]) -> x, error, total_iters`
 
 GMRES linear equation solver for use in Newton-GMRES solver
 
@@ -86,7 +86,7 @@ GMRES linear equation solver for use in Newton-GMRES solver
 * error : vector of residual norms for the history of the iteration
 * total_iters : number of iterations
 """
-function dgmres(f0, f, xc, errtol, kmax, reorth, x = zeros(f0))
+function dgmres(f0, f, xc, errtol, kmax, reorth = 1, x = zeros(f0))
    # The right side of the linear equation for the step is -f0.
    b = - f0
    n = length(b)
@@ -123,8 +123,8 @@ function dgmres(f0, f, xc, errtol, kmax, reorth, x = zeros(f0))
 
       # Modified Gram-Schmidt
       for j = 1:k
-         h[j,k] = v[:,j]' * v[:,k+1]
-         v[:,k+1] = v[:,k+1] - h[j,k] * v[:,j]
+         h[j, k] = dot(v[:,j], v[:,k+1])
+         v[:, k+1] = v[:,k+1] - h[j,k] * v[:,j]
       end
       h[k+1,k] = norm(v[:,k+1])
       normav2 = h[k+1,k]
@@ -132,7 +132,7 @@ function dgmres(f0, f, xc, errtol, kmax, reorth, x = zeros(f0))
       # Reorthogonalize?
       if  ((reorth == 1) && (normav + .001 * normav2 == normav)) || (reorth ==  3)
          for j = 1:k
-            hr = v[:,j]' * v[:,k+1]
+            hr = dot(v[:,j], v[:,k+1])
             h[j,k] = h[j,k] + hr
             v[:,k+1] = v[:,k+1] - hr * v[:,j]
          end
@@ -171,7 +171,7 @@ function dgmres(f0, f, xc, errtol, kmax, reorth, x = zeros(f0))
    total_iters = k
    x = x + v[1:n, 1:k] * y
 
-   return x, error, total_iters
+   return x, error, total_iters, total_iters 
 end
 
 
