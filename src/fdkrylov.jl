@@ -1,5 +1,5 @@
 
-export dgmres
+export dgmres, dlanzcos
 
 
 """
@@ -171,7 +171,7 @@ function dgmres(f0, f, xc, errtol, kmax, reorth = 1, x = zeros(f0))
    total_iters = k
    x = x + v[1:n, 1:k] * y
 
-   return x, error, total_iters, total_iters 
+   return x, error, total_iters, total_iters
 end
 
 

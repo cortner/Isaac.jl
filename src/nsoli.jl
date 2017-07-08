@@ -168,7 +168,7 @@ function nsoli{T}(x::Vector{T}, f;
             etanew = max(etanew, gamma * etaold^2)
          end
          eta = min(etanew, etamax)
-         eta = max(etaold, 0.5 * stop_tol / fnrm)
+         eta = max(eta, 0.5 * stop_tol / fnrm)
       end
 
       outstat = [outstat; [itc fnrm inner_it_count rat iarm]]
