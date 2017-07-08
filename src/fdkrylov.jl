@@ -1,5 +1,5 @@
 
-export dgmres, dlanzcos
+export dgmres
 
 
 """
