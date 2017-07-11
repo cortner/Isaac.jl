@@ -1,162 +1,153 @@
 
-function [sol, it_hist, ierr, x_hist] = brsola(x,f,tol, parms)
-% BRSOLA  Broyden's Method solver, globally convergent
-%          solver for f(x) = 0, Armijo rule, one vector storage
-%
-% C. T. Kelley, April 1, 2003
-%
-% This code comes with no guarantee or warranty of any kind.
-%
-% function [sol, it_hist, ierr, x_hist] = brsola.m(x,f,tol,parms)
-%
-% inputs:
-%        initial iterate = x
-%        function = f
-%        tol = [atol, rtol] relative/absolute
-%            error tolerances for the nonlinear iteration
-%        parms = [maxit, maxdim]
-%            maxit = maxmium number of nonlinear iterations
-%                default = 40
-%            maxdim = maximum number of Broyden iterations
-%                before restart, so maxdim-1 vectors are
-%                stored
-%                default = 40
-%
-% output:
-%        sol = solution
-%        it_hist(maxit,3) = l2 norms of nonlinear residuals
-%            for the iteration, number function evaluations,
-%            and number of steplength reductions
-%        ierr = 0 upon successful termination
-%        ierr = 1 if after maxit iterations
-%             the termination criterion is not satsified.
-%        ierr = 2 failure in the line search. The iteration
-%             is terminated if too many steplength reductions
-%             are taken.
-%
-%    x_hist = matrix of the entire interation history.
-%             The columns are the nonlinear iterates. This
-%             is useful for making movies, for example, but
-%             can consume way too much storage. This is an
-%             OPTIONAL argument. Storage is only allocated
-%             if x_hist is in the output argument list.
-%
-%
-% internal parameter:
-%       debug = turns on/off iteration statistics display as
-%               the iteration progresses
-%
-%       alpha = 1.d-4, parameter to measure sufficient decrease
-%
-%       maxarm = 10, maximum number of steplength reductions before
-%                    failure is reported
 
-%
-% set the debug parameter, 1 turns display on, otherwise off
-%
-debug=0;
-%
-% initialize it_hist, ierr, x_hist, and set the iteration parameters
-%
-ierr = 0; maxit=40; maxdim=39;
-it_histx=zeros(maxit,3);
-maxarm=10;
-%
-if nargin == 4
-    maxit=parms(1); maxdim=parms(2)-1;
-end
-if nargout==4
-    x_hist=x;
-end
-rtol=tol(2); atol=tol(1); n = length(x); fnrm=1; itc=0; nbroy=0;
-%
-% evaluate f at the initial iterate
-% compute the stop tolerance
-%
-f0=feval(f,x);
-fc=f0;
-fnrm=norm(f0);
-it_histx(itc+1,1)=fnrm; it_histx(itc+1,2)=0; it_histx(itc+1,3)=0;
-fnrmo=1;
-stop_tol=atol + rtol*fnrm;
-outstat(itc+1, :) = [itc fnrm 0 0];
-%
-% terminate on entry?
-%
+# BRSOLA  Broyden's Method solver, globally convergent
+#          solver for f(x) = 0, Armijo rule, one vector storage
+#
+# C. T. Kelley, April 1, 2003
+#
+# This code comes with no guarantee or warranty of any kind.
+#
+# function [sol, it_hist, ierr, x_hist] = brsola.m(x,f,tol,parms)
+#
+# inputs:
+#        initial iterate = x
+#        function = f
+#        tol = [atol, rtol] relative/absolute
+#            error tolerances for the nonlinear iteration
+#        parms = [maxit, maxdim]
+#            maxit = maxmium number of nonlinear iterations
+#                default = 40
+#            maxdim = maximum number of Broyden iterations
+#                before restart, so maxdim-1 vectors are
+#                stored
+#                default = 40
+#
+# output:
+#        sol = solution
+#        it_hist(maxit,3) = l2 norms of nonlinear residuals
+#            for the iteration, number function evaluations,
+#            and number of steplength reductions
+#        ierr = 0 upon successful termination
+#        ierr = 1 if after maxit iterations
+#             the termination criterion is not satsified.
+#        ierr = 2 failure in the line search. The iteration
+#             is terminated if too many steplength reductions
+#             are taken.
+#
+#    x_hist = matrix of the entire interation history.
+#             The columns are the nonlinear iterates. This
+#             is useful for making movies, for example, but
+#             can consume way too much storage. This is an
+#             OPTIONAL argument. Storage is only allocated
+#             if x_hist is in the output argument list.
+#
+#
+# internal parameter:
+#       debug = turns on/off iteration statistics display as
+#               the iteration progresses
+#
+#       alpha = 1.d-4, parameter to measure sufficient decrease
+#
+#       maxarm = 10, maximum number of steplength reductions before
+#                    failure is reported
+"""
+
+* debug : default 0, set the debug parameter, 1 turns display on, otherwise off
+"""
+function brsola(x, f;
+               atol = 1e-4, rtol = 1e-4,
+               debug=0, maxit = 40, maxdim=39, maxarm=10)
+   #  -> [sol, it_hist, ierr, x_hist]
+
+# initialize it_hist, ierr, x_hist, and set the iteration parameters
+ierr = 0
+it_histx = zeros(maxit, 3)
+x_hist = Vector{T}[x]
+n = length(x)
+fnrm = 1.0
+itc = 0
+nbroy = 0
+
+# evaluate f at the initial iterate
+# compute the stop tolerance
+f0 = f(x)
+fc = copy(f0)    # TODO: check whether copy is needed
+fnrm = norm(f0)
+it_histx[itc+1, :] = [fnrm, 0, 0]
+fnrmo = 1.0
+stop_tol = atol + rtol * fnrm
+outstat[itc+1, :] = [itc, fnrm, 0, 0]
+
+# terminate on entry?
 if fnrm < stop_tol
-    sol=x;
-    return
+   return x, it_hist, ierr, x_hist
 end
-%
-% initialize the iteration history storage matrices
-%
-stp=zeros(n,maxdim);
-stp_nrm=zeros(maxdim,1);
-lam_rec=ones(maxdim,1);
-%
-% Set the initial step to -F, compute the step norm
-%
-lambda=1;
-stp(:,1) = -fc;
-stp_nrm(1)=stp(:,1)'*stp(:,1);
-%
-% main iteration loop
-%
-while(itc < maxit)
-%
-    nbroy=nbroy+1;
-%
-%   keep track of successive residual norms and
-%   the iteration counter (itc)
-%
-    fnrmo=fnrm; itc=itc+1;
-%
-%   compute the new point, test for termination before
-%   adding to iteration history
-%
-    xold=x; lambda=1; iarm=0; lrat=.5; alpha=1.d-4;
-    x = x + stp(:,nbroy);
-    if nargout == 4
-        x_hist=[x_hist,x];
-    end
-    fc=feval(f,x);
-    fnrm=norm(fc);
-    ff0=fnrmo*fnrmo; ffc=fnrm*fnrm; lamc=lambda;
-%
-%
-%   Line search, we assume that the Broyden direction is an
-%   ineact Newton direction. If the line search fails to
-%   find sufficient decrease after maxarm steplength reductions
-%   brsola.m returns with failure.
-%
-%   Three-point parabolic line search
-%
-    while fnrm >= (1 - lambda*alpha)*fnrmo & iarm < maxarm
-%       lambda=lambda*lrat;
-        if iarm==0
-            lambda=lambda*lrat;
-        else
-            lambda=parab3p(lamc, lamm, ff0, ffc, ffm);
-        end
-        lamm=lamc; ffm=ffc; lamc=lambda;
-        x = xold + lambda*stp(:,nbroy);
-        fc=feval(f,x);
-        fnrm=norm(fc);
-        ffc=fnrm*fnrm;
-        iarm=iarm+1;
-    end
-%
-%   set error flag and return on failure of the line search
-%
-    if iarm == maxarm
-        disp('Line search failure in brsola.m ')
-        ierr=2;
-        it_hist=it_histx(1:itc+1,:);
-        sol=xold;
-        if nargout == 4
-            x_hist=[x_hist,x];
-        end
-        return;
+
+# initialize the iteration history storage matrices
+stp = zeros(n, maxdim)
+stp_nrm = zeros(maxdim)
+lam_rec = ones(maxdim)
+
+# Set the initial step to -F, compute the step norm
+lambda = 1.0;
+stp[:, 1] = -fc
+stp_nrm[1] = dot(stp[:,1], stp[:,1])
+
+# main iteration loop
+while itc < maxit
+
+   nbroy += 1
+
+   # keep track of successive residual norms and
+   # the iteration counter (itc)
+   fnrmo = fnrm
+   itc += 1
+
+   # compute the new point, test for termination before
+   # adding to iteration history
+   xold = x
+   lambda = 1.0
+   iarm = 0
+   lrat = 0.5
+   alpha=1e-4
+   x = x + stp[:, nbroy]
+   push!(x_hist, x)
+   fc = f(x)
+   fnrm = norm(fc)
+   ff0 = fnrmo^2
+   ffc = fnrm^2
+   lamc = lambda
+
+   # Line search, we assume that the Broyden direction is an
+   # ineact Newton direction. If the line search fails to
+   # find sufficient decrease after maxarm steplength reductions
+   # brsola.m returns with failure.
+
+   # Three-point parabolic line search
+   while (fnrm >= (1 - lambda*alpha)*fnrmo) && (iarm < maxarm)
+      #  lambda=lambda*lrat;
+      if iarm == 0
+         lambda = lambda * lrat
+      else
+         lambda = parab3p(lamc, lamm, ff0, ffc, ffm)
+      end    # =============== CONTINUE HERE ================
+      lamm, lamc = lamc, lambda
+      ffm = ffc
+      x = xold + lambda * stp[:,nbroy]
+      fc = f(x)
+      fnrm = norm(fc)
+      ffc = fnrm^2
+      iarm += 1
+   end
+
+   # set error flag and return on failure of the line search
+   if iarm == maxarm
+      warn("Line search failure in `brsola`")
+      ierr = 2
+      it_hist = it_histx[1:itc+1,:]
+      sol = xold
+      push!(x_hist, x)
+      return x, it_hist, ierr, x_hist
     end
 %
 %   How many function evaluations did this iteration require?
@@ -252,3 +243,5 @@ ierr=1;
 if debug==1
     disp(outstat)
 end
+
+end  # end function
