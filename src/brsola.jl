@@ -148,28 +148,28 @@ while itc < maxit
       sol = xold
       push!(x_hist, x)
       return x, it_hist, ierr, x_hist
-    end
-%
-%   How many function evaluations did this iteration require?
-%
-    it_histx(itc+1,1)=fnrm;
-    it_histx(itc+1,2)=it_histx(itc,2)+iarm+1;
-    if(itc == 1) it_histx(itc+1,2) = it_histx(itc+1,2)+1; end;
-    it_histx(itc+1,3)=iarm;
-%
-%   terminate?
-%
-    if fnrm < stop_tol
-        sol=x;
-        rat=fnrm/fnrmo;
-        outstat(itc+1, :) = [itc fnrm iarm rat];
-        it_hist=it_histx(1:itc+1,:);
-%        it_hist(itc+1)=fnrm;
-        if debug==1
-            disp(outstat(itc+1,:))
-        end
-        return
-    end
+   end
+
+   # How many function evaluations did this iteration require?
+   it_histx[itc+1, 1] = fnrm
+   it_histx[itc+1, 2] = it_histx[itc, 2] + iarm + 1
+   if (itc == 1)
+      it_histx[itc+1,2] += 1
+   end
+   it_histx[itc+1, 3] = iarm
+
+   # terminate?
+   if fnrm < stop_tol
+      sol=x;
+      rat=fnrm / fnrmo
+      outstat[itc+1, :] = [itc fnrm iarm rat]
+      it_hist = it_histx[1:itc+1, :]
+      #  it_hist(itc+1)=fnrm;
+      if debug == 1
+         println(outstat[itc+1,:])
+      end
+      return x, it_hist, ierr, x_hist
+   end
 %
 %
 %   modify the step and step norm if needed to reflect the line

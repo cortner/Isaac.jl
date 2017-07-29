@@ -51,7 +51,7 @@ C. T. Kelley, April 27, 2001
      iteration. default: etamax = .9
 * debug = turns on/off iteration statistics display as
                the iteration progresses
-* alpha = 1.d-4, parameter to measure sufficient decrease
+* alpha = 1.d-4, parameter to measure sufficient decrease (Armijo)
 * sigma0 = .1, sigma1 = .5, safeguarding bounds for the linesearch
 * maxarm = 20, maximum number of steplength reductions before
                     failure is reported
@@ -102,7 +102,7 @@ function nsoli{T}(x::Vector{T}, f;
             dkrylov(f0, f, x, eta, lmaxit, reorth)
 
       # ~~~~~~~~~~~~~~ BEGINNING OF LINESEARCH ~~~~~~~~~~~~~~~~
-      xold = x;
+      xold = x
       lambda = 1
       lamm = 1
       lamc = lambda
@@ -114,7 +114,7 @@ function nsoli{T}(x::Vector{T}, f;
       ff0 = nf0 * nf0
       ffc = nft * nft
       ffm = nft * nft
-      while nft >= (1 - alpha * lambda) * nf0
+      while nft >= (1 - alpha * lambda) * nf0    # |ft| >= (1 - α λ) |f0|
          # Apply the three point parabolic model.
          if iarm == 0
             lambda = sigma1 * lambda

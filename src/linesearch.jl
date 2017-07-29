@@ -27,12 +27,12 @@ function parab3p(lambdac, lambdam, ff0, ffc, ffm; sigma0 = 0.1, sigma1 = 0.5)
    # p(lambda) = ff0 + (c1 lambda + c2 lambda^2)/d1
    # d1 = (lambdac - lambdam)*lambdac*lambdam < 0
    #      so if c2 > 0 we have negative curvature and default to
-   #      lambdap = sigam1 * lambda
+   #      lambdap = sigma1 * lambda
    c2 = lambdam * (ffc - ff0) - lambdac * (ffm - ff0)
    if c2 >= 0
       return sigma1 * lambdac
    end
-   c1 = lambdac^2 * (ffm-ff0) - lambdam^2 * (ffc - ff0)
+   c1 = lambdac^2 * (ffm - ff0) - lambdam^2 * (ffc - ff0)
    lambdap = -c1 * 0.5 / c2
    if lambdap < sigma0 * lambdac
       return sigma0 * lambdac
