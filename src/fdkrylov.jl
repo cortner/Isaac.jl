@@ -1,4 +1,4 @@
-
+using Parameters
 
 export dgmres, dlanczos
 
@@ -213,7 +213,11 @@ function sorted_eig(A)
    return D[I], Q[:, I]
 end
 
-nkdualnorm(P, f) = norm(f)  # TODO: revisit
+Base.dot{T}(x, A::UniformScaling{T}, y) = A.λ * dot(x,y)
+Base.dot(x, A::AbstractMatrix, y) = dot(x, A*y)
+Base.norm(P, x) = sqrt(dot(x, P*x))
+dualnorm(P, f) = sqrt(dot(f, P \ f))
+nkdualnorm(P, f) = norm(f)  # TODO: revisit this!!!
 
 """
 `orthogonalise(w, V::Matrix, P=I) -> w'`:
@@ -234,10 +238,10 @@ function orthogonalise(w, V::Matrix, P=I; maxiter = 10, ORTHTOL=1e-10)
       if nrmw < 1e-15 && n == maxiter; break; end
       if nrmw < 1e-15
          w = P \ (rand(length(w)) - 0.5)
-         w /= norm(w, P)
+         w /= norm(P, w)
       else
          w /= norm(P, w)
-         if norm( w' * V, Inf ) < ORTHTOL
+         if vecnorm( (P*w)' * V, Inf ) < ORTHTOL
             return w
          end
       end
@@ -416,7 +420,7 @@ function dlanczos( f0, f, xc, b, errtol, kmax, transform = identity;
       g = Q * (E .\ (Q' * (V' * b)))
       x, x_old = V * g, x
       push!(λ_old, λ)
-      λ = D[1:neval]
+      λ = D[1:nevals]
       # if E == D then g(H) = H hence we can estimate the *actual* and *current* residual
       if (isnewton = (norm(E - D, Inf) < 1e-7) )
          res = norm( AxV * g - b )    # TODO: should we switch to P^{-1}-norm?
@@ -429,27 +433,27 @@ function dlanczos( f0, f, xc, b, errtol, kmax, transform = identity;
       end
 
       # CHECK FOR TERMINATION
-      if (res < errtol) && ((λ == E[1:neval]) || (err_λ < eigatol + eigrtol * abs(λ)))
-         return x, LanczosMatrix(V * Q, E, P), true
+      if (res < errtol) && ((λ == E[1:nevals]) || (err_λ < eigatol + eigrtol * abs(λ)))
+         return x, LanczosMatrix(V * Q, E, P), numf, true
       end
 
       # add the next Krylov vector
       if j <= size(V,2)   # we have Krylov vectors left to cycle through (99.9% of the time)
          w = orthogonalise(Y[:, j], V, P)
-         V, AxV, Y = appendkrylov(V, AxV, Y, w/nrmw, Hmul, P)
+         V, AxV, Y = appendkrylov(V, AxV, Y, w, Hmul, P)
          numf += 1
          j += 1
       else    # no vectors left, try to add a random vector (how can this happen???)
          warn("no vectors left; had to add a random vector")
          w = orthogonalise(P \ rand(d), V, P)
-         V, AxV, Y = appendkrylov(V, AxV, Y, w/nrmw, Hmul, P)
+         V, AxV, Y = appendkrylov(V, AxV, Y, w, Hmul, P)
          numf += 1
       end
    end
    # if we are here it means that kmax is reached, i.e. we terminate with
    # warning or error >>> TODO: return to how to best handle this?!
    # warn("`dcg_index1` did not converge within kmax = $(kmax) iterations")
-   return x, λ, vmin, numf, isnewton
+   return return x, LanczosMatrix(V * Q, E, P), numf, false
 end
 
 
