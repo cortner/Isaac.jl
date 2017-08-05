@@ -207,30 +207,43 @@ end
 `sorted_eig(A::Union{SymTridiagonal, Symmetric})`:
 diagonalise A, and return sorted eigenvalues and analogously sorted eigenvectors
 """
-function sorted_eig(A::Union{SymTridiagonal, Symmetric})
+function sorted_eig(A)
    D, Q = eig(A)
-   I = sortperm(D)
+   I = sortperm(real(D))
    return D[I], Q[:, I]
 end
 
-nkdualnorm(P, f) = norm(f)
+nkdualnorm(P, f) = norm(f)  # TODO: revisit
 
 """
-`orthogonalise(w, V::Matrix, P)`:
-Assuming V is P-orthogonal, P-orthogonalise w to V and return
+`orthogonalise(w, V::Matrix, P=I) -> w'`:
+Assuming V is P-orthogonal, P-orthogonalise w to V and return; if
+w is already in the span of V, then a random vector is orthogonalised
+and returned instead. The returned vector is normalised.
 """
-function orthogonalise(w, V::Matrix, P)
-   # make w orthogonal to all columns of V
-   for i = 1:size(V,2)
-      w -= dot(w, P, V[:,i]) * V[:,i]
-      # w /= norm(P, w)
+function orthogonalise(w, V::Matrix, P=I; maxiter = 10, ORTHTOL=1e-10)
+   @assert size(V,2) < size(V,1)
+   for n = 1:maxiter
+      w /= norm(P, w)
+      # make w orthogonal to all columns of V
+      for i = 1:size(V,2)
+         w -= dot(w, P, V[:,i]) * V[:,i]
+      end
+      # test that the resulting w is truly orthogonal:
+      nrmw = norm(P, w)
+      if nrmw < 1e-15 && n == maxiter; break; end
+      if nrmw < 1e-15
+         w = P \ (rand(length(w)) - 0.5)
+         w /= norm(w, P)
+      else
+         w /= norm(P, w)
+         if norm( w' * V, Inf ) < ORTHTOL
+            return w
+         end
+      end
    end
-   if norm(P, w) < 1e-10
-      warn("||w|| is very small after orthogonalisation")
-   end
-   w /= norm(P,w)
-   # TODO: create a test that the w we get is really orthogonal,
-   #       and if not then re-orthogonalise
+   warn("""`orthogonalise` did not terminate succesfully, most likely
+      the returned vector is not orthogonal to V""")
    return w
 end
 
@@ -247,12 +260,38 @@ function appendkrylov(V, AxV, Y, v, Hmul, P)
 end
 
 
-# TODO: generalise blocklanczos to allow arbitrary transformations of the
-#       spectrum, and probably also arbitrary right-hand sides
-# TODO: look into re-orthogonalising
+"""
+`immutable LanczosMatrix`: (todo: write documentation)
+"""
+immutable LanczosMatrix
+   V::Matrix{Float64}
+   D::Vector{Float64}
+   P
+end
+
+Base.length(K::LanczosMatrix) = length(K.D)
+Base.getindex(K::LanczosMatrix, i) = K.D[i], K.V[:,i]
+# (Base.*)()  (TODO)
+# collect
+# \
+
+"spectrum transformation for `dlanczos` for minimisation"
+minim(D) = abs.(D)
+"spectrum transformation for `dlanczos` for index-1 saddles"
+index1(D) = [-abs(D[1]); abs.(D[2:end])]
+"spectrum transformation for `dlanczos` for index-2 saddles"
+index2(D) = [-abs.(D[1:2]); abs.(D[3:end])]
+
+
+
+# TODO:
+#   * look into re-orthogonalising
+#   * look into getting rid of AxV
+#   * this code does not make proper use of the lanczos recursion
+#     at all; either switch to an arnoldi method, or clean it up
 
 """
-dlanczos(f0, f, xc, errtol, kmax; kwargs...) ->
+dlanczos(f0, f, xc, errtol, kmax, transform; kwargs...) ->
 
 Given E : ℝᴺ → ℝ with hessian H = ∇²E(x) and b ∈ ℝᴺ  `dlanczos` computes an
 approximate solution `u` to the system
@@ -272,16 +311,15 @@ In the lanzcos iterations the matrix vector product H * u
 is replaced with the finite-difference operation (∇E(xc + h u) - ∇E(xc))/h;
 see also `dirder` and `dirderinf`.
 
-dgmres(f0, f, xc, errtol, kmax, reorth = 1, x = zeros(f0))
-
 ## Required Parameters
 
-* f0 : ∇E(xc)
-* f : function to evaluate ∇E
-* xc : current point
-* b : right-hand side in the equation
-* errtol : max-norm residual tolerance for termination
-* kmax : maximum number of lanzcos iterations
+* `f0` : ∇E(xc)
+* `f` : function to evaluate ∇E
+* `xc` : current point
+* `b` : right-hand side in the equation
+* `errtol` : max-norm residual tolerance for termination
+* `kmax` : maximum number of lanzcos iterations
+* `transform` : the g transformation, default: id
 
 ## KW parameters
 
@@ -293,7 +331,7 @@ dgmres(f0, f, xc, errtol, kmax, reorth = 1, x = zeros(f0))
 * `dirder` : function to compute the directional derivative; see
          `dirderinf` for format
 * `ORTHTOL` : orthogonality tolerance parameter
-* `Hmul` : the finite-difference operation can in principle be replaces by
+* `Hmul` : the finite-difference operation can in principle be replaced by
          and arbitrary operator specifying the matrix-vector product
 
 ## Returns
@@ -310,54 +348,54 @@ see also `nsoli` and `dgmres` which are directly ported with permission from `ns
 of the equation we are trying to solve but only an approximation to that residual.
 Therefore the termination criterion is only approximately satisfied.
 """
-function dlanczos( f0, f, xc, b, errtol, kmax;
+function dlanczos( f0, f, xc, b, errtol, kmax, transform = identity;
                   P = I, V0 = P \ b,
                   eigatol = 1e-1, eigrtol = 1e-1,
                   debug = false, h = 1e-7,
                   dirder = dirderinf,
                   Hmul = z -> dirder(f, f0, xc, z, h),
-                  ORTHTOL = 1e-12 )
+                  ORTHTOL = 1e-12, nevals=1 )
 
+   # make sure V0 is given in the correct format (Matrix)
    if isa(V0, Vector)
       V0 = reshape(V0, length(V0), 1)
    end
-   p = size(V0,2)
 
    # initialise some variables
+   p = size(V0, 2)     # block size
    d = length(f0)      # problem dimension
    @assert kmax <= d
    numf = 0            # count f evaluations
    isnewton = false    # remember whether the output is a newton direction
 
-   # allocate Krylov subspace and more
+   # initialise Krylov subspace and more
    V = zeros(d,0)      # store the Krylov basis
    AxV = zeros(d, 0)   # store A vⱼ
    Y = zeros(d, 0)     # store P \ A vⱼ
 
-   # initialise Krylov subspace
+   # initialise Krylov subspace; TODO: detect if a vector is in the span of previous ones
    for j = 1:size(V0, 2)
       vj = orthogonalise(V0[:,j], V, P)
-      nrmvj = norm(P, vj)
-      if nrmvj > ORTHTOL
-         V, AxV, Y = appendkrylov(V, AxV, Y, vj/nrmvj, Hmul, P)
-         numf += 1
-      else
-         warn("a column of V0 is linearly dependent on the rest so I am skipping it")
-      end
+      V, AxV, Y = appendkrylov(V, AxV, Y, vj, Hmul, P)
    end
 
    # prepare for the Block-Lanczos loop
    j = 1
    x = zeros(d)
    vmin = zeros(d)
-   λ = minimum(eigvals(Symmetric(V'*AxV)))
-   λ_old = Float64[]
+   λ = sort(eigvals(Symmetric(V'*AxV)))[1:nevals]   # TODO: possibly track more than one e-val
+   λ_old = Vector{Float64}[]
+
+   if debug
+      @printf("      numf     λ    err_λ     |Ax-b|/|b| \n")
+   end
+
 
    # start the block-lanczos loop; when we have kmax v-vectors we stop
    while size(V, 2) <= kmax
 
-      # We have V, AxV and Y = P \ AxV  available, so we can immediately solve
-      # the projected linear system and eigenvalue problem
+      # At this point we have V, AxV and Y = P \ AxV  available, so we can
+      # now solve the projected linear system and eigenvalue problem
       #
       # there is probably an elegant way to assemble the projected
       # linear system, but for now we just do it brute-force:
@@ -367,42 +405,45 @@ function dlanczos( f0, f, xc, b, errtol, kmax;
       n = size(V, 2)
       T = Symmetric(V' * AxV)       # T = V' * P * Y = V' * AV
       #  TODO: could replace above with with [dot(V[:,a], P, Y[:,b] for a=1:n, b=1:n]
+      #        to avoid storing AxV altogether
 
-      # make the index-1 transformation
+      # make the specified transformation
       D, Q = sorted_eig(T)
-      E = [ - abs(D[1]); abs(D[2:end]) ]
-      vmin, vmin_old = V * Q[:,1], vmin    # smallest (hopefully unstable) eigenmode
+      E = transform(D)
       # residual estimate for the old x    >>> TODO: should we switch to P^{-1}-norm?
       res = norm( P * (V * (Q * (E .* (Q' * (V' * (P * x)))))) - b )
       # new x and λ (remember the old)
       g = Q * (E .\ (Q' * (V' * b)))
       x, x_old = V * g, x
       push!(λ_old, λ)
-      λ = D[1]
-      # if E == D then A' = A hence we can estimate the *actual* and *current* residual
-      if (isnewton = (E == D))
+      λ = D[1:neval]
+      # if E == D then g(H) = H hence we can estimate the *actual* and *current* residual
+      if (isnewton = (norm(E - D, Inf) < 1e-7) )
          res = norm( AxV * g - b )    # TODO: should we switch to P^{-1}-norm?
       end
       # check for termination
-      err_λ = maxabs(λ - λ_old[max(1,length(λ)-p+1):end])
-      if res < errtol && (λ < 0 || err_λ < eigatol + eigrtol * abs(λ))
-         return x, λ, vmin, numf, isnewton
+      err_λ = maximum(norm(λ - λ_old[i], Inf)
+                      for i = max(1,length(λ)-p+1):length(λ))
+      if debug
+         @printf("      %d   %.2f   %.2e    %.2e \n", numf, λ, err_λ, res/norm(b))
       end
 
-      if debug
-         @printf("    %d   %.2f   %.2e    %.2e \n", j, λ, err_λ, res/norm(b))
+      # CHECK FOR TERMINATION
+      if (res < errtol) && ((λ == E[1:neval]) || (err_λ < eigatol + eigrtol * abs(λ)))
+         return x, LanczosMatrix(V * Q, E, P), true
       end
+
       # add the next Krylov vector
-      w = orthogonalise(Y[:, j], V, P)
-      nrmw = norm(P, w)
-      if nrmw > ORTHTOL
+      if j <= size(V,2)   # we have Krylov vectors left to cycle through (99.9% of the time)
+         w = orthogonalise(Y[:, j], V, P)
          V, AxV, Y = appendkrylov(V, AxV, Y, w/nrmw, Hmul, P)
          numf += 1
-      end
-      j += 1
-      if j > size(V,2)   # if we have no new vector left, then we are in trouble!
-         # TODO: deal with this somehow, probably by adding a random vector!
-         error("I don't know yet how to deal with the case p = 0")
+         j += 1
+      else    # no vectors left, try to add a random vector (how can this happen???)
+         warn("no vectors left; had to add a random vector")
+         w = orthogonalise(P \ rand(d), V, P)
+         V, AxV, Y = appendkrylov(V, AxV, Y, w/nrmw, Hmul, P)
+         numf += 1
       end
    end
    # if we are here it means that kmax is reached, i.e. we terminate with
