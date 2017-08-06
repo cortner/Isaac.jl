@@ -3,7 +3,7 @@ using ForwardDiff
 using Base.Test
 
 
-# include("testproblems.jl")
-# include("correctness.jl")
-# include("performance.jl")
+include("testproblems.jl")
+include("correctness.jl")
+include("performance.jl")
 include("test_dlanczos.jl")

@@ -1,4 +1,7 @@
 
+export nsoli 
+
+
 """
 function nsoli(x,f; kwargs...) -> (sol, it_hist, ierr, x_hist)
 
