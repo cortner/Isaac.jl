@@ -274,6 +274,8 @@ Base.getindex(K::LanczosMatrix, i) = K.D[i], K.V[:,i]
 # (Base.*)()  (TODO)
 # collect
 # \
+# rank
+# isnewton
 
 "spectrum transformation for `dlanczos` for minimisation"
 minim(D) = abs.(D)
@@ -289,9 +291,12 @@ index2(D) = [-abs.(D[1:2]); abs.(D[3:end])]
 #   * look into getting rid of AxV
 #   * this code does not make proper use of the lanczos recursion
 #     at all; either switch to an arnoldi method, or clean it up
+#   * `isnewton` could be incorporated into LanczosMatrix
 
 """
-dlanczos(f0, f, xc, errtol, kmax, transform; kwargs...) ->
+dlanczos(f0, f, xc, errtol, kmax, transform; kwargs...)
+      -> x, G, numf, success, isnewton
+
 
 Given E : ℝᴺ → ℝ with hessian H = ∇²E(x) and b ∈ ℝᴺ  `dlanczos` computes an
 approximate solution `u` to the system
@@ -336,9 +341,11 @@ see also `dirder` and `dirderinf`.
 
 ## Returns
 
-* x : approximate solution
-* G : of type `LanczosMatrix`, to extract information about the computed operator
-* success : true if termination criteria are satisfied, false if kmax is reached
+* `x` : approximate solution
+* `G` : of type `LanczosMatrix`, to extract information about the computed operator
+* `numf` : number of f evaluations
+* `success` : true if termination criteria are satisfied, false if kmax is reached
+* `isnewton` : true if the step if the hessian spectrum was left unmodified
 
 ## Further Notes
 
@@ -348,7 +355,7 @@ see also `nsoli` and `dgmres` which are directly ported with permission from `ns
 of the equation we are trying to solve but only an approximation to that residual.
 Therefore the termination criterion is only approximately satisfied.
 """
-function dlanczos( f0, f, xc, b, errtol, kmax, transform = identity;
+function dlanczos(f0, f, xc, b, errtol, kmax, transform = identity;
                   P = I, V0 = P \ b,
                   eigatol = 1e-1, eigrtol = 1e-1,
                   debug = false, hfd = 1e-7,
@@ -367,16 +374,20 @@ function dlanczos( f0, f, xc, b, errtol, kmax, transform = identity;
    @assert kmax <= d
    numf = 0            # count f evaluations
    isnewton = false    # remember whether the output is a newton direction
+   success = false     # flag for termination
 
    # initialise Krylov subspace and more
    V = zeros(d,0)      # store the Krylov basis
    AxV = zeros(d, 0)   # store A vⱼ
    Y = zeros(d, 0)     # store P \ A vⱼ
+   Q = Matrix{Float64}()
+   E = Vector{Float64}()
 
    # initialise Krylov subspace; TODO: detect if a vector is in the span of previous ones
    for j = 1:size(V0, 2)
       vj = orthogonalise(V0[:,j], V, P)
       V, AxV, Y = appendkrylov(V, AxV, Y, vj, Hmul, P)
+      numf += 1
    end
 
    # prepare for the Block-Lanczos loop
@@ -389,7 +400,6 @@ function dlanczos( f0, f, xc, b, errtol, kmax, transform = identity;
    if debug
       @printf("      numf     λ    err_λ     |Ax-b|/|b| \n")
    end
-
 
    # start the block-lanczos loop; when we have kmax v-vectors we stop
    while size(V, 2) <= kmax
@@ -425,12 +435,21 @@ function dlanczos( f0, f, xc, b, errtol, kmax, transform = identity;
       err_λ = maximum(norm(λ - λ_old[i], Inf)
                       for i = max(1,length(λ)-p+1):length(λ))
       if debug
-         @printf("      %d   %.2f   %.2e    %.2e \n", numf, λ, err_λ, res/norm(b))
+         @printf("      %d   %.2f   %.2e    %.2e \n", numf, λ[1], err_λ, res/norm(b))
       end
 
-      # CHECK FOR TERMINATION
-      if (res < errtol) && ((λ == E[1:nevals]) || (err_λ < eigatol + eigrtol * abs(λ)))
-         return x, LanczosMatrix(V * Q, E, P), numf, true
+      # CHECK FOR SUCCESFUL TERMINATION
+      #  * if size(V,2) == d then we have assembled the entire matrix
+      if (size(V,2) == d) ||  (
+         (res < errtol) && ((λ == E[1:nevals]) || (err_λ < eigatol + eigrtol * abs(λ)))  )
+         success = true
+         break
+      end
+
+      # CHECK FOR UNSUCCESFUL TERMINATION
+      if size(V,2) == kmax
+         success = false
+         break
       end
 
       # add the next Krylov vector
@@ -439,15 +458,18 @@ function dlanczos( f0, f, xc, b, errtol, kmax, transform = identity;
          V, AxV, Y = appendkrylov(V, AxV, Y, w, Hmul, P)
          numf += 1
          j += 1
-      else    # no vectors left, try to add a random vector (how can this happen???)
-         warn("no vectors left; had to add a random vector")
-         w = orthogonalise(P \ rand(d), V, P)
-         V, AxV, Y = appendkrylov(V, AxV, Y, w, Hmul, P)
-         numf += 1
+      else
+         error("how did we get here?")
       end
+      # else    # no vectors left, try to add a random vector (how can this happen???)
+      #    warn("no vectors left; had to add a random vector")
+      #    w = orthogonalise(P \ rand(d), V, P)
+      #    V, AxV, Y = appendkrylov(V, AxV, Y, w, Hmul, P)
+      #    numf += 1
+      # end
    end
    # if we are here it means that kmax is reached, i.e. we terminate with
    # warning or error >>> TODO: return to how to best handle this?!
    # warn("`dcg_index1` did not converge within kmax = $(kmax) iterations")
-   return return x, LanczosMatrix(V * Q, E, P), numf, false
+   return x, LanczosMatrix(V * Q, E, P), numf, success, isnewton
 end

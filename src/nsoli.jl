@@ -1,5 +1,5 @@
 
-export nsoli 
+export nsoli
 
 
 """
@@ -59,6 +59,11 @@ C. T. Kelley, April 27, 2001
 * maxarm = 20, maximum number of steplength reductions before
                     failure is reported
 * debug = 0:  Set the debug parameter; 1 turns display on, otherwise off.
+
+
+SOLVING NONLINEAR EQUATIONS WITH NEWTON'S METHOD
+ C. T. KELLEY
+ 2003 / xiv + 104 pages / Softcover / ISBN: 978-0-898715-46-0
 """
 function nsoli{T}(x::Vector{T}, f;
    atol = 1e-5, rtol = 1e-5, dkrylov = dgmres,

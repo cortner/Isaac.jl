@@ -1,30 +1,60 @@
-using Parameters
+using Parameters, ProgressMeter
 
+export nsolistab
 
 """
-Newton-Krylov based saddle search method
+`nsolistab{T}(dE, x0::Vector{T}, saddleindex; kwargs...)`
+   ->
+
+# A "stabilising jacobian-free Newton-Krylov solver"
+
+A Newton-Krylov solver for computing critical points of `E` with
+prescribed `saddleindex`, e.g. `saddleindex = 0` returns only minima,
+`saddleindex = 1` returns only index-1 saddles and so forth.
+For computing *any* critical point use `nsoli` instead.
+
+## Required Arguments
+
+* `dE` : evaluate potential gradient
+* `x0` : initial condition
+* `saddleindex` : specifies which critical points are being sought, e.g.,
+   `0` for minima, `1` for index-1 saddles; under some idealising assumptions,
+   for `saddleindex=n`, the `nsolistab` dynamical system has as its stable equilibria all
+   critical points with `n` negative and `d-n` positive hessian eigenvalues
+   while all other critical points of `E` are unstable equilibria.
+
+## Keyword Arguments
+
+* `tol = 1e-5`
+* `maxnumdE = 200`
+* `maxstep = Inf`
+* `hfd = 1e-7`
+* `P = I, precon_prep = (P, x) -> P`
+* `eigatol = 1e-1, eigrtol = 1e-1`
+* `verbose = 1`
+* `V0 = rand(T, (length(x0), saddleindex+1))`
+* `E = nothing`
+* `linesearch = nothing`
+* `krylovinit = :resrot`
+
+## Output
 """
-@with_kw type NK
-   tol::Float64 = 1e-5
-   maxnumdE::Int = 1000
-   len::Float64 = 1e-7
-   precon = I
-   precon_prep! = (P, x) -> P
-   verbose::Int = 1
-   krylovinit::Symbol = :resrot  # allow res, rand, rot, resrot
-   maxstep::Float64 = Inf
-   eigatol::Float64 = 1e-1
-   eigrtol::Float64 = 1e-1
-end
-
-
-function run!{T}(method::NK, E, dE, x0::Vector{T},
-                  v0::Vector{T} = rand(T, length(x0)) )
-   # get parameters
-   @unpack tol, maxnumdE, len, verbose, krylovinit, maxstep,
-      eigatol, eigrtol = method
-   precon = x -> method.precon_prep!(method.precon, x)
+function nsolistab{T}(dE, x0::Vector{T}, saddleindex::Int;
+                  tol = 1e-5,
+                  maxnumdE = 200,
+                  maxstep = Inf,
+                  hfd = 1e-7,
+                  P = I, precon_prep = (P, x) -> P,
+                  eigatol = 1e-1, eigrtol = 1e-1,
+                  verbose = 1,
+                  V0 = rand(T, (length(x0), saddleindex+1)),
+                  E = nothing,
+                  linesearch = nothing,
+                  krylovinit = :resrot    # TODO: remove asap
+               )
+   @assert saddleindex == 1   # TODO: remove asap
    debug = verbose > 2
+   progressmeter = verbose == 1
 
    # initialise some more parameters; TODO: move these into NK?
    d = length(x0)
@@ -36,22 +66,20 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
 
    # evaluate the initial residual
    x = copy(x0)
-   v = copy(v0)
+   v = copy(V0)
    f0 = dE(x)
    numdE = 1
    res = norm(f0, Inf)
 
-   P = precon(x)
+   P = precon_prep(P, x)
    fnrm = nkdualnorm(P, f0)
-   fnrmo = 1.0
+   fnrmo = fnrm
    itc = 0
 
    while res > tol && numdE < maxnumdE
-      rat = fnrm / fnrmo   # TODO: is this unused?
-      fnrmo = fnrm         # TODO: probably move this to where fnrm is updated!
+      rat = fnrm / fnrmo   # this is used for the Eisenstat-Walker thing
       itc += 1
 
-      if debug; @show dot(f0, v); end
       # compute the (modified) Newton direction
       if krylovinit == :res
          V0 = - P \ f0
@@ -60,14 +88,16 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
       elseif krylovinit == :rot
          V0 = v
       elseif krylovinit == :resrot
-         V0 = [ P \ f0 v ]
+         V0 = [ P\f0  v ]
       else
          error("unknown parameter `krylovinit = $(krylovinit)`")
       end
-      p, λ, v, inner_numdE, isnewton =
-            blocklanczos(f0, dE, x, eta * norm(f0), kmax;
-                         P = P, b = - f0, V0 = V0, debug = (verbose >= 3),
-                         h = len, eigatol = eigatol, eigrtol = eigrtol)
+
+      p, G, inner_numdE, success, isnewton =
+            dlanczos(f0, dE, x, -f0, eta * nkdualnorm(P, f0), kmax, index1;
+                         P = P, V0 = V0, debug = debug,
+                         hfd = hfd, eigatol = eigatol, eigrtol = eigrtol)
+
       numdE += inner_numdE
       if debug; @show isnewton; end
 
@@ -117,7 +147,8 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
          #    if (f0-ft)⋅p is very small, then simply use xt as the next step.
          #    if it is large enough, then take just one iteration to get a root
          if abs(dot(f0 - ft, P, p)) > 1e-4   #  TODO: make this a parameter
-            t = dot(f0, P, p) / dot(f0 - ft, P, p)
+                                             #  TODO: there should be no P here!
+            t = dot(f0, P, p) / dot(f0 - ft, P, p)     # . . . nor here!
             t = max(t, 0.1)    # don't make too small a step
             t = min(t, 4 * t)  # don't make too large a step
             αt, αm, nfm, fm = (t*αt), αt, nft, ft
@@ -133,17 +164,17 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
             end
          end
       end
-      if verbose > 3; @show αt; end
+      if debug; @show αt; end
       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
       # update current configuration and preconditioner
       x, f0, fnrm = xt, ft, nft
-      P = precon(x)
+      P = precon_prep(P, x)
       res = norm(f0, Inf)
       fnrm = nkdualnorm(P, f0)     # should be the dual norm!
       rat = fnrm/fnrmo
 
-      if verbose > 3; @show λ, res; end
+      if debug; @show λ, res; end
 
       if res <= tol
          return x, numdE
@@ -151,8 +182,9 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
 
       # ---------------------------------------------------------
       # Adjust eta as per Eisenstat-Walker.   # TODO: make this a flag!
-      # TODO: check also the we are in the index-1 regime (what do we do if
+      # TODO: check also that we are in the index-1 regime (what do we do if
       # not? probably reset eta?)
+      # S. C. Eisenstat, H. F. Walker, Choosing the forcing terms in an inexact Newton method, SIAM J. Sci. Comput. 17 (1996) 16–32.
       etaold = eta
       etanew = gamma * rat^2
       if gamma * etaold^2 > 0.1
@@ -164,7 +196,7 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
 
    end
 
-   if verbose > 1
+   if verbose >= 1
       warn("NK did not converge within the maximum number of dE evaluations")
    end
    return x, numdE
