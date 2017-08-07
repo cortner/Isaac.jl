@@ -63,23 +63,4 @@ end
 
 
 
-# println("Testing nsolistab, 2D LJ Vacancy, init = near, P = EXP")
-# x4, ndE = nsolistab(dE, x0, 1; V0=v0,
-#                     P = precond(V, x0), precon_prep = (P, x) -> precond(V, x) )
-# println("   num_dE = ", ndE)
-# @test norm(dE(x4), Inf) < 1e-5
-# @test norm(x2 - x4, Inf) < 1e-6
-# println("   |dE| = ", norm(dE(x4), Inf))
-# println("   |x_I - x_P| = ", norm(x2 - x4, Inf))
-#
-# x0, v0 = ic_dimer(V, :far)
-# println("Testing nsolistab, 2D LJ Vacancy, init = far, P = EXP")
-# x5, ndE = nsolistab(dE, x0, 1; V0=v0,
-#                     P = precond(V, x0), precon_prep = (P, x) -> precond(V, x) )
-# println("   num_dE = ", ndE)
-# @test norm(dE(x5), Inf) < 1e-5
-# @test norm(x2 - x5, Inf) < 1e-6
-# println("   |dE| = ", norm(dE(x5), Inf))
-# println("   |x_I - x_P| = ", norm(x2 - x5, Inf))
-
 end  # @testset "nsolidstab-index1"

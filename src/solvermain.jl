@@ -52,7 +52,6 @@ function nsolistab{T}(dE, x0::Vector{T}, saddleindex::Int;
                   linesearch = nothing,
                   krylovinit = :resrot    # TODO: remove asap
                )
-   @assert saddleindex == 1   # TODO: remove asap
    debug = verbose > 2
    progressmeter = verbose == 1
 
@@ -63,6 +62,7 @@ function nsolistab{T}(dE, x0::Vector{T}, saddleindex::Int;
    kmax = min(40, d)
    Carmijo = 1e-4
    α_old = α = 1.0
+   σtransform = D -> indexp(D, saddleindex)
 
    # evaluate the initial residual
    x = copy(x0)
@@ -94,7 +94,7 @@ function nsolistab{T}(dE, x0::Vector{T}, saddleindex::Int;
       end
 
       p, G, inner_numdE, success, isnewton =
-            dlanczos(f0, dE, x, -f0, eta * nkdualnorm(P, f0), kmax, index1;
+            dlanczos(f0, dE, x, -f0, eta * nkdualnorm(P, f0), kmax, σtransform;
                          P = P, V0 = V0, debug = debug,
                          hfd = hfd, eigatol = eigatol, eigrtol = eigrtol)
 
@@ -193,7 +193,6 @@ function nsolistab{T}(dE, x0::Vector{T}, saddleindex::Int;
       eta = min(etanew, etamax)
       eta = max(eta, 0.5 * tol / fnrm)
       # ---------------------------------------------------------
-
    end
 
    if verbose >= 1

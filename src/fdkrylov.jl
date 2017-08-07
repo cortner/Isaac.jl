@@ -284,6 +284,8 @@ index1(D) = [-abs(D[1]); abs.(D[2:end])]
 "spectrum transformation for `dlanczos` for index-2 saddles"
 index2(D) = [-abs.(D[1:2]); abs.(D[3:end])]
 
+"spectrum transformation for general case"
+indexp(D, p::Integer) = [-abs.(D[1:p]); abs.(D[p+1:end])]
 
 
 # TODO:
