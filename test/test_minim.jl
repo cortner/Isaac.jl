@@ -4,7 +4,7 @@ using SaddleSearch.TestSets
 using SaddleSearch.TestSets: hessprecond, precond
 
 
-println("Testing nsolistab for minimisation")
+println("Testing nsolimod for minimisation")
 @testset "nsolidstab-minim" begin
 
 #[1] p-Laplacian
@@ -21,8 +21,8 @@ dE_plap(X) = plap1([0;X;0])[2:end-1]
 for (n, prec) in [ (10, false), (10, true), (50, false), (50, true) ]
    x0 = zeros(n)
    P = prec ? precond_plap(n) : I
-   println("Testing nsolistab, minim, p-Laplacian, n = $n, precon = $prec")
-   x, ndE = nsolistab(dE_plap, x0, 0; krylovinit=:res, P = P)
+   println("Testing nsolimod, minim, p-Laplacian, n = $n, precon = $prec")
+   x, ndE = nsolimod(dE_plap, x0, 0; krylovinit=:res, P = P)
    println("   num_dE = ", ndE)
    println("   |∇E| = ", norm(dE_plap(x), Inf))
    @test norm(dE_plap(x), Inf) < 1e-5
@@ -37,8 +37,8 @@ for (R, prec) in [(5.1, false), (5.1, true), (12.1, false), (12.1, true)]
    x0, v0 = ic_dimer(V, :far)
    P, Pprep = prec ? (precond(V, x0), (P, x) -> precond(V, x)) : (I, (P,x)->P)
 
-   println("Testing nsolistab, minim, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
-   x, ndE = nsolistab(dE, x0, 0; krylovinit=:res, P = P, precon_prep = Pprep)
+   println("Testing nsolimod, minim, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
+   x, ndE = nsolimod(dE, x0, 0; krylovinit=:res, P = P, precon_prep = Pprep)
    println("   num_dE = ", ndE)
    println("   |∇E| = ", norm(dE(x), Inf))
    @test norm(dE(x), Inf) < 1e-5

@@ -6,17 +6,17 @@ using SaddleSearch.TestSets: hessprecond, precond
 using CTKSolvers
 using SaddleSearch: ODE12r, odesolve, IterationLog
 
-println("Testing nsolistab for index-1 saddles")
-@testset "nsolidstab-index1" begin
+println("Testing nsolimod for index-1 saddles")
+@testset "nsolidmod-index1" begin
 
 #[1] Muller Test
 xe = []
 for init in (:near, :far)
-   println("Testing nsolistab, Muller, init = $(init)")
+   println("Testing nsolimod, Muller, init = $(init)")
    V = MullerPotential()
    x0, v0 = ic_dimer(V, init)
    E, dE = objective(V)
-   x, ndE = nsolistab(dE, x0, 1; V0=v0)
+   x, ndE = nsolimod(dE, x0, 1; V0=v0)
    println("   num_dE = ", ndE)
    if init == :near
       xe = copy(x)
@@ -41,8 +41,8 @@ for (init, precond, precon_prep) in
    x0, v0 = ic_dimer(V, init)
    pre = !(precond == I)
 
-   println("Testing nsolistab, 2D LJ Vacancy, init = $init, precond = $pre")
-   x, ndE = nsolistab(dE, x0, 1; V0=v0, P = precond, precon_prep=precon_prep)
+   println("Testing nsolimod, 2D LJ Vacancy, init = $init, precond = $pre")
+   x, ndE = nsolimod(dE, x0, 1; V0=v0, P = precond, precon_prep=precon_prep)
    println("   num_dE = ", ndE)
    @test norm(dE(x), Inf) < 1e-5
    println("   |dE| = ", norm(dE(x), Inf))

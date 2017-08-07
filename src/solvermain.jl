@@ -1,10 +1,10 @@
 using Parameters, ProgressMeter
 
-export nsolistab
+export nsolimod
 
 """
-`nsolistab{T}(dE, x0::Vector{T}, saddleindex; kwargs...)`
-   ->
+`nsolimod{T}(dE, x0::Vector{T}, saddleindex; kwargs...)`
+   -> x, numdE
 
 # A "stabilising jacobian-free Newton-Krylov solver"
 
@@ -19,7 +19,7 @@ For computing *any* critical point use `nsoli` instead.
 * `x0` : initial condition
 * `saddleindex` : specifies which critical points are being sought, e.g.,
    `0` for minima, `1` for index-1 saddles; under some idealising assumptions,
-   for `saddleindex=n`, the `nsolistab` dynamical system has as its stable equilibria all
+   for `saddleindex=n`, the `nsolimod` dynamical system has as its stable equilibria all
    critical points with `n` negative and `d-n` positive hessian eigenvalues
    while all other critical points of `E` are unstable equilibria.
 
@@ -39,7 +39,7 @@ For computing *any* critical point use `nsoli` instead.
 
 ## Output
 """
-function nsolistab{T}(dE, x0::Vector{T}, saddleindex::Int;
+function nsolimod{T}(dE, x0::Vector{T}, saddleindex::Int;
                   tol = 1e-5,
                   maxnumdE = 200,
                   maxstep = Inf,
@@ -47,7 +47,7 @@ function nsolistab{T}(dE, x0::Vector{T}, saddleindex::Int;
                   P = I, precon_prep = (P, x) -> P,
                   eigatol = 1e-1, eigrtol = 1e-1,
                   verbose = 1,
-                  V0 = rand(T, (length(x0), saddleindex+1)),
+                  V0 = rand(T, (length(x0), saddleindex)),
                   E = nothing,
                   linesearch = nothing,
                   krylovinit = :resrot    # TODO: remove asap
