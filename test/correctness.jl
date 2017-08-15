@@ -1,5 +1,5 @@
 
-@testset "CTKSolvers" begin
+@testset "Isaac" begin
 
 println("Basic correctness tests.")
 # TODO: add tests determining what happens on failure!!!!
@@ -10,7 +10,7 @@ println("Basic correctness tests.")
       for i = 1:10
          x = randinit()
          w = rand(length(x)) - 0.5; w /= norm(w)
-         err = norm( df(x) * w - CTKSolvers.dirder(x, w, f, f(x)) )
+         err = norm( df(x) * w - Isaac.dirder(x, w, f, f(x)) )
          @test err < 1e-6
       end
    end
@@ -24,7 +24,7 @@ end
       for tol in (1e-1, 1e-2, 1e-3)
          maxiter = 100
          u, error, total_iters = dgmres(fx, f, x, tol, maxiter)
-         err = norm(CTKSolvers.dirder(x, u, f, fx) - (-fx))
+         err = norm(Isaac.dirder(x, u, f, fx) - (-fx))
          @test err / norm(fx) < tol
          # TODO: This next test seems to fail quite often
          # @test abs(error[end] - err) < 1e-7

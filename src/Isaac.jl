@@ -1,5 +1,5 @@
 
-module CTKSolvers
+module Isaac
 
 
 # linsearch  method

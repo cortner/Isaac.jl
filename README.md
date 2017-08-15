@@ -1,11 +1,11 @@
 
 # Isaac.jl
 
-<!-- [![Build Status](https://travis-ci.org/cortner/CTKSolvers.jl.svg?branch=master)](https://travis-ci.org/cortner/CTKSolvers.jl)
+[![Build Status](https://travis-ci.org/cortner/Isaac.jl.svg?branch=master)](https://travis-ci.org/cortner/Isaac.jl)
 
-[![Coverage Status](https://coveralls.io/repos/cortner/CTKSolvers.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/cortner/CTKSolvers.jl?branch=master)
+<!-- [![Coverage Status](https://coveralls.io/repos/cortner/Isaac.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/cortner/Isaac.jl?branch=master)
 
-[![codecov.io](http://codecov.io/github/cortner/CTKSolvers.jl/coverage.svg?branch=master)](http://codecov.io/github/cortner/CTKSolvers.jl?branch=master) -->
+[![codecov.io](http://codecov.io/github/cortner/Isaac.jl/coverage.svg?branch=master)](http://codecov.io/github/cortner/Isaac.jl?branch=master) -->
 
 The aim of this package is to develop some non-standard experimental Newton type solvers for solving nonlinear systems, optimisation, but most importantly for saddle search.
 
@@ -18,15 +18,16 @@ At present a small selection of Jacobian-Free Newton-Krylov solvers is implement
 
 Since the package is not registered, use
 ```
-Pkg.clone("git@github.com:cortner/CTKSolvers.jl.git")
+Pkg.clone("git@github.com:cortner/Isaac.jl.git")
 ```
 
 There is no documentation, but the inline documentation is fairly extensive;
 start with
 ```
-using CTKSolvers
+using Isaac
 ?nsoli
 ?nsolimod
+?nkminim
 ```
 in the REPL or IJulia
 
@@ -38,15 +39,15 @@ See the `tests` directory for more examples.
 ### Nonlinear Solver `nsoli`
 
 ```
-using CTKSolvers
+using Isaac
 f(x) = [x[1] + x[2] + x[1]^2, x[2] + x[1]*x[2]]
 x, it_hist, ierr, x_hist = nsoli(rand(2), f)
 ```
 
-### Minimisation and saddle-search with `nsolimod`
+### Minimisation and saddle-search with `nsolimod` and `nkminim`
 
 ```
-using CTKSolvers, ForwardDiff
+using Isaac, ForwardDiff
 E(x) = (x[1]^2 - 1)^2 + (x[2]-x[1]^2)^2
 dE(x) = ForwardDiff.gradient(E, x)
 # minimisation (index-0 saddle search)
@@ -58,7 +59,7 @@ x1, n1 = nsolimod(dE, [0.4,-0.1], 1)
 ```
 
 
-## Should I use `ModulatedNewtonMethods`?
+## Should I use `Isaac`?
 
 For most users looking for a robust and well-tested optimiser or nonlinear solver [`Optim.jl`](https://github.com/JuliaNLSolvers/Optim.jl) and [`NLsolve.jl`](https://github.com/JuliaNLSolvers/NLsolve.jl) are probably better choices. That said, the code `nsoli` (or at least its parent `nsoli.m`) is a robust and well-tested code, and always worth comparing against `NLsolve.jl` to decide which will perform better on a specific problem. Moreover, `nkminim` also seems to perform very well on my limited number of test problems.
 

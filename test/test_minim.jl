@@ -5,7 +5,7 @@ using SaddleSearch.TestSets: hessprecond, precond
 
 
 println("Testing nsolimod for minimisation")
-@testset "nsolidstab-minim" begin
+@testset "nsolidmod-minim" begin
 
 #[1] p-Laplacian
 plap(U; n=length(U)) = (n-1) * sum( (0.1 + diff(U).^2).^2 ) - sum(U) / (n-1)

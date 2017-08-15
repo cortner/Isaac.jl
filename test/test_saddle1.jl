@@ -3,7 +3,7 @@ using SaddleSearch
 using SaddleSearch.TestSets
 using SaddleSearch: numE, numdE, res_trans, res_rot
 using SaddleSearch.TestSets: hessprecond, precond
-using CTKSolvers
+using Isaac
 using SaddleSearch: ODE12r, odesolve, IterationLog
 
 println("Testing nsolimod for index-1 saddles")
