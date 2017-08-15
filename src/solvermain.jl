@@ -6,7 +6,7 @@ export nsolimod
 `nsolimod{T}(dE, x0::Vector{T}, saddleindex; kwargs...)`
    -> x, numdE
 
-# A "stabilising jacobian-free Newton-Krylov solver"
+# A "modulated jacobian-free Newton-Krylov solver"
 
 A Newton-Krylov solver for computing critical points of `E` with
 prescribed `saddleindex`, e.g. `saddleindex = 0` returns only minima,
@@ -38,6 +38,9 @@ For computing *any* critical point use `nsoli` instead.
 * `krylovinit = :resrot`
 
 ## Output
+
+* `x` : solution
+* `numdE` : number of gradient evaluations
 """
 function nsolimod{T}(dE, x0::Vector{T}, saddleindex::Int;
                   tol = 1e-5,
@@ -49,7 +52,7 @@ function nsolimod{T}(dE, x0::Vector{T}, saddleindex::Int;
                   verbose = 1,
                   V0 = rand(T, (length(x0), saddleindex)),
                   E = nothing,
-                  linesearch = nothing,
+                  linesearch = onestep,
                   krylovinit = :resrot    # TODO: remove asap
                )
    debug = verbose > 2
@@ -102,7 +105,10 @@ function nsolimod{T}(dE, x0::Vector{T}, saddleindex::Int;
       if debug; @show isnewton; end
 
       # ~~~~~~~~~~~~~~~~~~ LINESEARCH ~~~~~~~~~~~~~~~~~~~~~~
-      if isnewton
+      # output of linesearch will be: α, xt (new x), ft (new dE), nft (norm)
+      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+      if isnewton   # if we are in the Newton regime, then we always try to reduce the residual
          iarm = 0
          α = αt = 1.0
          xt = x + αt * p
@@ -131,44 +137,17 @@ function nsolimod{T}(dE, x0::Vector{T}, saddleindex::Int;
             nft = nkdualnorm(P, ft)
             iarm += 1
          end
-         α_old = αt
       else
-         # if we are here, then p is not a newton direction (i.e. an e-val was
-         # flipped) in this case, we do something very crude:
-         #   take same step as before, then do one line-search step
-         #   and pick the better of the two.
-         αt = 0.66 * α_old  # probably can do better by re-using information from dcg_...
-         αt = min(αt, maxstep / norm(p, Inf))
-         xt = x + αt * p
-         ft = dE(xt)
-         nft = nkdualnorm(P, ft)
-         numdE += 1
-         # find a root: g(t) = (1-t) f0⋅p + t ft ⋅ p = 0 => t = f0⋅p / (f0-ft)⋅p
-         #    if (f0-ft)⋅p is very small, then simply use xt as the next step.
-         #    if it is large enough, then take just one iteration to get a root
-         if abs(dot(f0 - ft, P, p)) > 1e-4   #  TODO: make this a parameter
-                                             #  TODO: there should be no P here!
-            t = dot(f0, P, p) / dot(f0 - ft, P, p)     # . . . nor here!
-            t = max(t, 0.1)    # don't make too small a step
-            t = min(t, 4 * t)  # don't make too large a step
-            αt, αm, nfm, fm = (t*αt), αt, nft, ft
-            αt = min(αt, maxstep / norm(p, Inf))
-            xt = x + αt * p
-            ft = dE(xt)
-            numdE += 1
-            nft = nkdualnorm(P, ft)
-            # if the line-search step is worse than the initial trial, then
-            # we revert
-            if abs(dot(ft, P, p)) > abs(dot(fm, P, p))
-               αt, xt, nft, ft = αm, x + αm * p, nfm, fm
-            end
-         end
+         # if we are here, then p is not a newton direction
+         # (i.e. an e-val was flipped)
+         αt, xt, ft, nft, numdE_plus = linesearch(x, p, α_old, E, dE, f0, P, maxstep)
+         numdE += numdE_plus
       end
       if debug; @show αt; end
       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
       # update current configuration and preconditioner
-      x, f0, fnrm = xt, ft, nft
+      x, f0, fnrm, α_old = xt, ft, nft, αt
       P = precon_prep(P, x)
       res = norm(f0, Inf)
       fnrm = nkdualnorm(P, f0)     # should be the dual norm!
@@ -184,7 +163,9 @@ function nsolimod{T}(dE, x0::Vector{T}, saddleindex::Int;
       # Adjust eta as per Eisenstat-Walker.   # TODO: make this a flag!
       # TODO: check also that we are in the index-1 regime (what do we do if
       # not? probably reset eta?)
-      # S. C. Eisenstat, H. F. Walker, Choosing the forcing terms in an inexact Newton method, SIAM J. Sci. Comput. 17 (1996) 16–32.
+      # S. C. Eisenstat, H. F. Walker,
+      # Choosing the forcing terms in an inexact Newton method,
+      # SIAM J. Sci. Comput. 17 (1996) 16–32.
       etaold = eta
       etanew = gamma * rat^2
       if gamma * etaold^2 > 0.1
@@ -200,3 +181,21 @@ function nsolimod{T}(dE, x0::Vector{T}, saddleindex::Int;
    end
    return x, numdE
 end
+
+
+
+# function nkminim(E, dE, x0;
+#                 tol = 1e-5,
+#                 maxnumdE = 200,
+#                 maxstep = Inf,
+#                 hfd = 1e-7,
+#                 P = I, precon_prep = (P, x) -> P,
+#                 verbose = 1 )
+#
+#    # specialised settings
+#    eigatol = Inf
+#    eigrtol = Inf
+#    krylovinit = :res
+#
+#
+# end

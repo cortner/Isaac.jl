@@ -71,7 +71,7 @@ The main use case for `nsolimod` at the moment is saddle-search. On my tests sys
 * generalise `nsolimod` to nonlinear systems
 * improve linesearch, especially for minimisation
 * Performance tuning
-* current implementation of `dlanzcos` is very naive as it does not exploit the usual structures in Lanczos iterations; this should eventually be fixed
+* current implementation of `dlanzcos` is very naive as it does not exploit the usual structures in Lanczos iterations; this should eventually be fixed or maybe just move to Arnoldi
 * integrate with `Optim.jl`, `NLsolve.jl`, `NLSolversBase.jl`
-* generalise codes to admit actual hessian-vector products and full hessian inversion
+* generalise codes to admit actual hessian-vector products and full hessian inversion, depending on whether the objective is `OnceDifferentiable` or `TwiceDifferentiable`
 * add more examples
