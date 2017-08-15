@@ -140,6 +140,6 @@ function lsarmijo(x, p, α_old, E, dE, dE0, P, maxstep;
 
    # we also need to return the gradient at the final l.s. point
    dEt = dE(xt)
-   nft = nkdualnorm(P, ft)
+   nft = nkdualnorm(P, dEt)
    return αt, xt, dE(xt), nft, numdE
 end

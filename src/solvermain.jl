@@ -1,6 +1,6 @@
 using Parameters, ProgressMeter
 
-export nsolimod
+export nsolimod, nkminim
 
 """
 `nsolimod{T}(dE, x0::Vector{T}, saddleindex; kwargs...)`
@@ -137,17 +137,20 @@ function nsolimod{T}(dE, x0::Vector{T}, saddleindex::Int;
             nft = nkdualnorm(P, ft)
             iarm += 1
          end
+         α_old = αt
       else
          # if we are here, then p is not a newton direction
          # (i.e. an e-val was flipped)
          αt, xt, ft, nft, numdE_plus = linesearch(x, p, α_old, E, dE, f0, P, maxstep)
          numdE += numdE_plus
+         # TODO: we get better results if we DO NOT update α_old here.
+         #       WHY?????
       end
       if debug; @show αt; end
       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
       # update current configuration and preconditioner
-      x, f0, fnrm, α_old = xt, ft, nft, αt
+      x, f0, fnrm = xt, ft, nft
       P = precon_prep(P, x)
       res = norm(f0, Inf)
       fnrm = nkdualnorm(P, f0)     # should be the dual norm!
@@ -184,18 +187,24 @@ end
 
 
 
-# function nkminim(E, dE, x0;
-#                 tol = 1e-5,
-#                 maxnumdE = 200,
-#                 maxstep = Inf,
-#                 hfd = 1e-7,
-#                 P = I, precon_prep = (P, x) -> P,
-#                 verbose = 1 )
-#
-#    # specialised settings
-#    eigatol = Inf
-#    eigrtol = Inf
-#    krylovinit = :res
-#
-#
-# end
+function nkminim(E, dE, x0;
+                tol = 1e-5,
+                maxnumdE = 200,
+                maxstep = Inf,
+                hfd = 1e-7,
+                P = I, precon_prep = (P, x) -> P,
+                verbose = 1 )
+
+   # specialised settings
+   eigatol = Inf
+   eigrtol = Inf
+   krylovinit = :res
+   linesearch = lsarmijo
+
+   # call the generic solver
+   return nsolimod(dE, x0, 0;
+            tol = tol, maxnumdE = maxnumdE, maxstep = maxstep, hfd = hfd,
+            P = P, precon_prep = precon_prep, eigatol = eigatol, eigrtol = eigrtol,
+            verbose = verbose, linesearch = linesearch, krylovinit = krylovinit,
+            E = E)
+end

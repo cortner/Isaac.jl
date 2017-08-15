@@ -443,7 +443,7 @@ function dlanczos(f0, f, xc, b, errtol, kmax, transform = identity;
       # CHECK FOR SUCCESFUL TERMINATION
       #  * if size(V,2) == d then we have assembled the entire matrix
       if (size(V,2) == d) ||  (
-         (res < errtol) && ((λ == E[1:nevals]) || (err_λ < eigatol + eigrtol * abs(λ)))  )
+         (res < errtol) && ((λ == E[1:nevals]) || (err_λ < eigatol + eigrtol * abs(λ[1])))  )
          success = true
          break
       end
