@@ -34,16 +34,3 @@ df3(x) = ForwardDiff.jacobian(f3, x)
 init3() = zeros(4)
 randinit3() =  [1.22474487, 0., 0., 0.5 ] + (rand(4)-0.5)
 push!(tests, (f3, df3, init3, randinit3, "Josephy"))
-
-
-
-# maybe add this one as well:
-# # From Nocedal & Wright, p. 288-289
-#
-# # Jacobian is singular at the starting point.
-# # Used to test the behavior of algorithms in that context.
-#
-# function f_sing!(x, fvec)
-#     fvec[1] = x[1]
-#     fvec[2] = 10*x[1]/(x[1]+convert(eltype(x), 0.1))+2*x[2]^2
-# end
