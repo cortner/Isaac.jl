@@ -17,7 +17,14 @@ precond_plap(n::Number) = spdiagm( ( -ones(n-1), 2*ones(n), -ones(n-1) ),
 E_plap(X) = plap([0;X;0])
 dE_plap(X) = plap1([0;X;0])[2:end-1]
 
-for (n, prec) in [ (10, false), (10, true), (50, false), (50, true) ]
+if isCI
+   N1, N2 = 10, 20
+else
+   N1, N2 = 10, 50
+end
+
+
+for (n, prec) in [ (N1, false), (N1, true), (N2, false), (N2, true) ]
    x0 = zeros(n)
    P = prec ? precond_plap(n) : I
 
@@ -36,7 +43,12 @@ end
 
 
 # [2] 2D LJ Vacancy Test
-for (R, prec) in [(5.1, false), (5.1, true), (12.1, false), (12.1, true)]
+
+R1, R2 = 5.1, 12.1
+
+for (R, prec) in [(R1, false), (R1, true), (R2, false), (R2, true)]
+   if isCI && R == R2; break; end
+
    V = LJVacancy2D(R=R, bc = :clamped)
    E, dE = objective(V)
    x0, v0 = ic_dimer(V, :far)
@@ -57,25 +69,25 @@ end
 
 
 # [2] 2D LJ Vacancy Test (IC near saddle)
+if notCI
+   for (R, prec) in [(R1, false), (R1, true), (R2, false), (R2, true)]
+      V = LJVacancy2D(R=R, bc = :clamped)
+      E, dE = objective(V)
+      x0, v0 = ic_dimer(V, :near)
+      P, Pprep = prec ? (precond(V, x0), (P, x) -> precond(V, x)) : (I, (P,x)->P)
 
-for (R, prec) in [(5.1, false), (5.1, true), (12.1, false), (12.1, true)]
-   V = LJVacancy2D(R=R, bc = :clamped)
-   E, dE = objective(V)
-   x0, v0 = ic_dimer(V, :near)
-   P, Pprep = prec ? (precond(V, x0), (P, x) -> precond(V, x)) : (I, (P,x)->P)
+      # println("Testing nsolimod, minim, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
+      # x, ndE = nsolimod(dE, x0, 0; krylovinit=:res, P = P, precon_prep = Pprep)
+      # println("   num_dE = ", ndE)
+      # println("   |∇E| = ", norm(dE(x), Inf))
+      # @test norm(dE(x), Inf) < 1e-5
 
-   # println("Testing nsolimod, minim, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
-   # x, ndE = nsolimod(dE, x0, 0; krylovinit=:res, P = P, precon_prep = Pprep)
-   # println("   num_dE = ", ndE)
-   # println("   |∇E| = ", norm(dE(x), Inf))
-   # @test norm(dE(x), Inf) < 1e-5
-
-   println("Testing nkminim, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
-   x, ndE = nkminim(E, dE, x0; P = P, precon_prep = Pprep)
-   println("   num_dE = ", ndE)
-   println("   |∇E| = ", norm(dE(x), Inf))
-   @test norm(dE(x), Inf) < 1e-5
+      println("Testing nkminim, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
+      x, ndE = nkminim(E, dE, x0; P = P, precon_prep = Pprep)
+      println("   num_dE = ", ndE)
+      println("   |∇E| = ", norm(dE(x), Inf))
+      @test norm(dE(x), Inf) < 1e-5
+   end
 end
-
 
 end  # @testset "nsolidstab-index1"
