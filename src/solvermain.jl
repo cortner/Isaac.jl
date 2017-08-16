@@ -85,7 +85,7 @@ function nsolimod{T}(dE, x0::Vector{T}, saddleindex::Int;
 
       # compute the (modified) Newton direction
       if krylovinit == :res
-         V0 = - P \ f0
+         V0 = - (P \ f0)
       elseif krylovinit == :rand
          V0 = P \ rand(d)
       elseif krylovinit == :rot

@@ -211,8 +211,8 @@ end
 
 Base.dot{T}(x, A::UniformScaling{T}, y) = A.λ * dot(x,y)
 Base.dot(x, A::AbstractMatrix, y) = dot(x, A*y)
-Base.norm(P, x) = sqrt(dot(x, P*x))
-dualnorm(P, f) = sqrt(dot(f, P \ f))
+Base.norm(P, x) = sqrt(abs(dot(x, P*x)))
+dualnorm(P, f) = sqrt(abs(dot(f, P \ f)))
 nkdualnorm(P, f) = norm(f)  # TODO: revisit this!!!
 
 """
