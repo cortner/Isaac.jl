@@ -16,7 +16,7 @@ for init in (:near, :far)
    V = MullerPotential()
    x0, v0 = ic_dimer(V, init)
    E, dE = objective(V)
-   x, ndE = nsolimod(dE, x0, 1; V0=v0)
+   x, ndE = nsolimod(dE, x0, 1; V0=v0, maxnumdE = 500)
    println("   num_dE = ", ndE)
    if init == :near
       xe = copy(x)

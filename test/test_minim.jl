@@ -28,12 +28,6 @@ for (n, prec) in [ (N1, false), (N1, true), (N2, false), (N2, true) ]
    x0 = zeros(n)
    P = prec ? precond_plap(n) : I
 
-   # println("Testing nsolimod, minim, p-Laplacian, n = $n, precon = $prec")
-   # x, ndE = nsolimod(dE_plap, x0, 0; krylovinit=:res, P = P)
-   # println("   num_dE = ", ndE)
-   # println("   |∇E| = ", norm(dE_plap(x), Inf))
-   # @test norm(dE_plap(x), Inf) < 1e-5
-
    println("Testing nkminim, p-Laplacian, n = $n, precon = $prec")
    x, ndE = nkminim(E_plap, dE_plap, x0; P = P)
    println("   num_dE = ", ndE)
@@ -54,12 +48,6 @@ for (R, prec) in [(R1, false), (R1, true), (R2, false), (R2, true)]
    x0, v0 = ic_dimer(V, :far)
    P, Pprep = prec ? (precond(V, x0), (P, x) -> precond(V, x)) : (I, (P,x)->P)
 
-   # println("Testing nsolimod, minim, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
-   # x, ndE = nsolimod(dE, x0, 0; krylovinit=:res, P = P, precon_prep = Pprep)
-   # println("   num_dE = ", ndE)
-   # println("   |∇E| = ", norm(dE(x), Inf))
-   # @test norm(dE(x), Inf) < 1e-5
-
    println("Testing nkminim, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
    x, ndE = nkminim(E, dE, x0; P = P, precon_prep = Pprep)
    println("   num_dE = ", ndE)
@@ -76,14 +64,8 @@ if notCI
       x0, v0 = ic_dimer(V, :near)
       P, Pprep = prec ? (precond(V, x0), (P, x) -> precond(V, x)) : (I, (P,x)->P)
 
-      # println("Testing nsolimod, minim, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
-      # x, ndE = nsolimod(dE, x0, 0; krylovinit=:res, P = P, precon_prep = Pprep)
-      # println("   num_dE = ", ndE)
-      # println("   |∇E| = ", norm(dE(x), Inf))
-      # @test norm(dE(x), Inf) < 1e-5
-
       println("Testing nkminim, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
-      x, ndE = nkminim(E, dE, x0; P = P, precon_prep = Pprep)
+      x, ndE = nkminim(E, dE, x0; P = P, precon_prep = Pprep, verbose=0, update_α_old = true)
       println("   num_dE = ", ndE)
       println("   |∇E| = ", norm(dE(x), Inf))
       @test norm(dE(x), Inf) < 1e-5

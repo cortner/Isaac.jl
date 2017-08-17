@@ -52,7 +52,7 @@ function onestep(x, p, α_old, E, dE, f0, P, maxstep)
    #   take same step as before, then do one line-search step
    #   and pick the better of the two.
    numdE = 0
-   αt = 0.66 * α_old  # probably can do better by re-using information from dcg_...
+   αt = 0.66 * α_old
    αt = min(αt, maxstep / norm(p, Inf))
    xt = x + αt * p
    ft = dE(xt)
@@ -93,14 +93,22 @@ TODO:
  * switch to LineSearches.jl
  *
 """
-function lsarmijo(x, p, α_old, E, dE, dE0, P, maxstep;
+function lsarmijo(x, p, α_old, E, dE, dE0, P, maxstep, K = nothing;
                   Ca = 0.2)
 
    maxα = maxstep / norm(p, Inf)
    # take one potentially forward step
    slope = dot(dE0, p)
    E0 = E(x)
-   α1 = α_old * 0.66   # be a bit cautious
+   #  α1 = 0.5 + 0.33*α_old : works really  well for P = I
+   #  α1 = 0.66*α_old : works really well with a good P
+   #  α1 = 1.0 : decent overall
+   if P == I
+      α1 = 0.5 + 0.33 * α_old
+   else
+      α1 = 0.66 * α_old
+   end
+   α1 = min(α1, maxα)
    x1 = x + α1 * p
    E1 = E(x1)
    numdE = 1
@@ -111,7 +119,7 @@ function lsarmijo(x, p, α_old, E, dE, dE0, P, maxstep;
       if E0 + α1 * slope < E1   # above the slope > parab2p is meaningful
          αt = parab2p(E0, slope, E1, α1)
       else # below the slope > parab2p would give nonsense
-         αt = 2.0 * α1
+         αt = 1.5 * max(α1, α_old)
       end
       # make sure the step is not too small
       αt = max(α1/4, αt)
@@ -142,4 +150,95 @@ function lsarmijo(x, p, α_old, E, dE, dE0, P, maxstep;
    dEt = dE(xt)
    nft = nkdualnorm(P, dEt)
    return αt, xt, dE(xt), nft, numdE
+end
+
+@noinline function _dotK_(p, f, P, K)
+   
+   fK = K \ f
+   return dot(p, P, fK)
+end
+
+
+"""
+A very crude step-length selection for the pre-asymptotic regime.
+
+TODO: remove P from the arguments!
+"""
+function lswolfe(x, p, α_old, E, dE, f0, P, maxstep, K; Cw = 0.9, minα = 1e-6)
+   # in this case, we do something very crude:
+   #   take same step as before, then do one line-search step
+   #   and pick the better of the two.
+   φ = f_ -> _dotK_(p, f_, P, K)
+   g0 = φ(f0)
+   tol = Cw * abs(g0)
+   maxα = maxstep / norm(p, Inf)
+   numdE = 0
+   if P == I
+      α1 = 0.5 + 0.33 * α_old
+   else
+      α1 = 0.66 * α_old
+   end
+   α1 = min(α1, maxα)
+   x1 = x + α1 * p
+   f1 = dE(x1)
+   g1 = φ(f1)
+   numdE += 1
+
+   # check whether initial trial satisfies the Wolfe condition
+   if abs(g1) <= tol
+      # if yes, then we just take one extra step to try and find a better
+      # guess, but if we cannot then we continue with αt
+
+      # find a root: g(t) = (1-t) f0⋅p + t ft ⋅ p = 0 => t = f0⋅p / (f0-ft)⋅p
+      #    if (f0-ft)⋅p is very small, then simply use xt as the next step.
+      #    if it is large enough, then take just one iteration to get a root
+      t = g0 / (g0-g1)
+      t = max(t, 0.25)    # don't make too small a step
+      t = min(t, 4.0)  # don't make too large a step
+      αt = min(t * α1, maxα)
+      xt = x + αt * p
+      ft = dE(xt)
+      gt = φ(ft)
+      numdE += 1
+      # if the line-search step is worse than the initial trial, then
+      # we revert
+      if abs(gt) > abs(g1)
+         αt, xt = α1, x1
+      end
+   else
+      # CASE 2: the initial guess does not satisfy Wolfe
+      #         >>> need to work a bit now, hopefully it is worth it
+      # let's try basic secant for now
+      A = [0.0, α1]
+      X = [x, x1]
+      F = [f0, f1]
+      G = [g0, g1]
+      @show α1, g0, g1
+      for n = 1:5  # dont try for too long
+         αt = A[end] - G[end] * (A[end] - A[end-1])/(G[end]-G[end-1])
+         αt = min(αt, maxα)
+         αt = max(αt, minα)
+         xt = x + αt * p
+         ft = dE(xt)
+         numdE += 1
+         gt = φ(ft)
+         @show αt, gt
+         push!(A, αt)
+         push!(X, xt)
+         push!(F, ft)
+         push!(G, gt)
+         if (abs(gt) <= tol) || (αt == maxα) || (αt == minα)
+            break
+         end
+      end
+      # now pick the best step we have found
+      A = A[2:end]
+      X = X[2:end]
+      F = F[2:end]
+      G = G[2:end]
+      _, imin = findmin(abs.(G))
+      αt, xt, ft = A[imin], X[imin], F[imin]
+   end
+
+   return αt, xt, ft, dualnorm(P, ft), numdE
 end

@@ -52,8 +52,9 @@ function nsolimod{T}(dE, x0::Vector{T}, saddleindex::Int;
                   verbose = 1,
                   V0 = rand(T, (length(x0), saddleindex)),
                   E = nothing,
-                  linesearch = onestep,
-                  krylovinit = :resrot    # TODO: remove asap
+                  linesearch = lswolfe,
+                  krylovinit = :resrot,    # TODO: remove asap
+                  update_α_old = true
                )
    debug = verbose > 2
    progressmeter = verbose == 1
@@ -141,10 +142,13 @@ function nsolimod{T}(dE, x0::Vector{T}, saddleindex::Int;
       else
          # if we are here, then p is not a newton direction
          # (i.e. an e-val was flipped)
-         αt, xt, ft, nft, numdE_plus = linesearch(x, p, α_old, E, dE, f0, P, maxstep)
+         αt, xt, ft, nft, numdE_plus = linesearch(x, p, α_old, E, dE, f0, P, maxstep, G)
          numdE += numdE_plus
          # TODO: we get better results if we DO NOT update α_old here.
          #       WHY?????
+         if update_α_old
+            α_old = αt
+         end
       end
       if debug; @show αt; end
       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -156,7 +160,7 @@ function nsolimod{T}(dE, x0::Vector{T}, saddleindex::Int;
       fnrm = nkdualnorm(P, f0)     # should be the dual norm!
       rat = fnrm/fnrmo
 
-      if debug; @show λ, res; end
+      # if debug; @show λ, res; end
 
       if res <= tol
          return x, numdE
@@ -193,7 +197,8 @@ function nkminim(E, dE, x0;
                 maxstep = Inf,
                 hfd = 1e-7,
                 P = I, precon_prep = (P, x) -> P,
-                verbose = 1 )
+                verbose = 1,
+                update_α_old = true )
 
    # specialised settings
    eigatol = Inf
@@ -206,5 +211,5 @@ function nkminim(E, dE, x0;
             tol = tol, maxnumdE = maxnumdE, maxstep = maxstep, hfd = hfd,
             P = P, precon_prep = precon_prep, eigatol = eigatol, eigrtol = eigrtol,
             verbose = verbose, linesearch = linesearch, krylovinit = krylovinit,
-            E = E)
+            E = E, update_α_old = update_α_old)
 end
