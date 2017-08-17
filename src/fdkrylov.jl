@@ -213,7 +213,9 @@ Base.dot{T}(x, A::UniformScaling{T}, y) = A.λ * dot(x,y)
 Base.dot(x, A::AbstractMatrix, y) = dot(x, A*y)
 Base.norm(P, x) = sqrt(abs(dot(x, P*x)))
 dualnorm(P, f) = sqrt(abs(dot(f, P \ f)))
-nkdualnorm(P, f) = norm(f)  # TODO: revisit this!!!
+# nkdualnorm(P, f) = dualnorm(P, f)  # TODO: revisit this!!!
+nkdualnorm(P, f) = norm(f)
+# There seems to be no consistent benefit to either!
 
 """
 `orthogonalise(w, V::Matrix, P=I) -> w'`:
@@ -271,9 +273,10 @@ end
 
 Base.length(K::LanczosMatrix) = length(K.D)
 Base.getindex(K::LanczosMatrix, i) = K.D[i], K.V[:,i]
-# (Base.*)()  (TODO)
-# collect
-# \
+import Base: *, \, A_mul_B!
+*(K::LanczosMatrix, v) = K.P * (K.V * (K.D .* (K.V' * (K.P * v))))
+A_mul_B!(out::Array{Float64,1}, L::LanczosMatrix, x::Array{Float64,1}) = copy!(out, L * x)
+\(K::LanczosMatrix, f) = K.V * ( K.D.^(-1) .* (K.V' * f) )
 # rank
 # isnewton
 
@@ -423,7 +426,7 @@ function dlanczos(f0, f, xc, b, errtol, kmax, transform = identity;
       D, Q = sorted_eig(T)
       E = transform(D)
       # residual estimate for the old x    >>> TODO: should we switch to P^{-1}-norm?
-      res = norm( P * (V * (Q * (E .* (Q' * (V' * (P * x)))))) - b )
+      res = nkdualnorm(P,  P * (V * (Q * (E .* (Q' * (V' * (P * x)))))) - b )
       # new x and λ (remember the old)
       g = Q * (E .\ (Q' * (V' * b)))
       x, x_old = V * g, x
@@ -431,7 +434,7 @@ function dlanczos(f0, f, xc, b, errtol, kmax, transform = identity;
       λ = D[1:nevals]
       # if E == D then g(H) = H hence we can estimate the *actual* and *current* residual
       if (isnewton = (norm(E - D, Inf) < 1e-7) )
-         res = norm( AxV * g - b )    # TODO: should we switch to P^{-1}-norm?
+         res = nkdualnorm(P, AxV * g - b )    # TODO: should we switch to P^{-1}-norm?
       end
       # check for termination
       err_λ = maximum(norm(λ - λ_old[i], Inf)

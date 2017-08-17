@@ -52,7 +52,7 @@ function nsolimod{T}(dE, x0::Vector{T}, saddleindex::Int;
                   verbose = 1,
                   V0 = rand(T, (length(x0), saddleindex)),
                   E = nothing,
-                  linesearch = lswolfe,
+                  linesearch = lsdefault,
                   krylovinit = :resrot,    # TODO: remove asap
                   update_α_old = true
                )
