@@ -509,7 +509,11 @@ end
 # \(K::LanczosMatrix, f) = K.V * ( K.D.^(-1) .* (K.V' * f) )
 
 
+"""
+`stabilise(D::Vector) = D .* sign.(real.(D))`
 
+a Lipschitz-continuous spectrum transformation that stabilises the origin
+"""
 stabilise(D::Vector) = D .* sign.(real.(D))
 
 
