@@ -198,13 +198,13 @@ function nkminim(E, dE, x0;
                 hfd = 1e-7,
                 P = I, precon_prep = (P, x) -> P,
                 verbose = 1,
-                update_α_old = true )
+                update_α_old = true,
+                linesearch = lsarmijo )
 
    # specialised settings
    eigatol = Inf
    eigrtol = Inf
    krylovinit = :res
-   linesearch = lsarmijo
 
    # call the generic solver
    return nsolimod(dE, x0, 0;
@@ -325,9 +325,9 @@ function nsolistab{T}(f, x0::Vector{T};
          α_old = αt
       else
          # if we are here, then p is not a newton direction (i.e. an e-val was flipped)
-         αt, xt, ft, nft, numdE_plus = linesearch(x, p, α_old, nothing, I, f0, I, maxstep, I)
+         αt, xt, ft, nft, numdE_plus = linesearch(x, p, α_old, nothing, f, f0, I, maxstep, I)
          numdE += numdE_plus
-         if update_α_old; α_old = αt; end
+         α_old = αt
       end
       if debug; @show αt; end
       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

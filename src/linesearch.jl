@@ -127,11 +127,12 @@ function lsdefault(x, p, α_old, E, dE, f0, P, maxstep, K; Ca = 0.2, Cw = 0.9, m
    tol = Cw * abs(g0)
    maxα = maxstep / norm(p, Inf)
    numdE = 0
-   if P == I
-      α1 = 0.5 + 0.33 * α_old
-   else
-      α1 = 0.66 * α_old
-   end
+   # if P == I
+   #    α1 = 0.5 + 0.33 * α_old
+   # else
+   #    α1 = 0.66 * α_old
+   # end
+   α1 = 1.0
    αt = min(α1, maxα)
    xt = x + αt * p
    ft = dE(xt)

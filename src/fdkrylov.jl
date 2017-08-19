@@ -637,15 +637,15 @@ function darnoldi( f0, f, xc, b, errtol, kmax, transform = identity;
       D, X = eig(H)
       Dmod = transform(D)
       # residual estimate for the old x
-      res = norm(AxV * x - b)
+      res = norm(AxV * (V'*x) - b)   # V'*x recovers the xV below
       # new x (remember the old)
       #     A ≈ P V V' * Y V' = P V H V'     =>     A⁻¹ ≈ V H⁻¹ V' P⁻¹
       xV = X * (Dmod .\ (X \ (V' * bP)))  # coefficients of x in V
       x, x_old = V * xV, x
-      # if E == D then g(J) = J hence we can estimate the *actual* and *current* residual
+      # if Dmod == D then this was a newton step 
       isnewton = (norm(Dmod - D, Inf) < 1e-7)
       if isnewton
-         res = norm(AxV * g - b)
+         res = norm(AxV * xV - b)
       end
       if debug
          @printf("      %d    %.2e \n", numf, res/norm(b))
