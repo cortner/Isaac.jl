@@ -33,6 +33,15 @@ for (n, prec) in [ (N1, false), (N1, true), (N2, false), (N2, true) ]
    println("   num_dE = ", ndE)
    println("   |∇E| = ", norm(dE_plap(x), Inf))
    @test norm(dE_plap(x), Inf) < 1e-5
+   xm = x
+
+   println("Testing nsolistab, p-Laplacian, n = $n, precon = $prec")
+   x, ndE = nsolistab(dE_plap, x0; P = P)
+   println("   num_dE = ", ndE)
+   println("   |∇E| = ", norm(dE_plap(x), Inf))
+   @test norm(dE_plap(x), Inf) < 1e-5
+
+   @test norm(xm - x, Inf) < 1e-6
 end
 
 
@@ -53,10 +62,16 @@ for (R, prec) in [(R1, false), (R1, true), (R2, false), (R2, true)]
    println("   num_dE = ", ndE)
    println("   |∇E| = ", norm(dE(x), Inf))
    @test norm(dE(x), Inf) < 1e-5
+
+   println("Testing nsolistab, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
+   x, ndE = nsolistab(dE, x0; P = P, precon_prep = Pprep)
+   println("   num_dE = ", ndE)
+   println("   |∇E| = ", norm(dE(x), Inf))
+   @test norm(dE(x), Inf) < 1e-5
 end
 
 
-# [2] 2D LJ Vacancy Test (IC near saddle)
+# [2] 2D LJ Vacancy Test (IC near saddle but flow to minim)
 if notCI
    for (R, prec) in [(R1, false), (R1, true), (R2, false), (R2, true)]
       V = LJVacancy2D(R=R, bc = :clamped)
@@ -66,6 +81,12 @@ if notCI
 
       println("Testing nkminim, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
       x, ndE = nkminim(E, dE, x0; P = P, precon_prep = Pprep, verbose=0, update_α_old = true)
+      println("   num_dE = ", ndE)
+      println("   |∇E| = ", norm(dE(x), Inf))
+      @test norm(dE(x), Inf) < 1e-5
+
+      println("Testing nsolistab, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
+      x, ndE = nsolistab(dE, x0; P = P, precon_prep = Pprep, verbose=0)
       println("   num_dE = ", ndE)
       println("   |∇E| = ", norm(dE(x), Inf))
       @test norm(dE(x), Inf) < 1e-5
