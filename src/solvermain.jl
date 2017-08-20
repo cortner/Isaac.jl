@@ -52,7 +52,7 @@ function nsolimod{T}(dE, x0::Vector{T}, saddleindex::Int;
                   verbose = 1,
                   V0 = rand(T, (length(x0), saddleindex)),
                   E = nothing,
-                  linesearch = lsdefault,
+                  linesearch = lsforce,
                   krylovinit = :resrot,    # TODO: remove asap
                   update_α_old = true
                )
@@ -224,14 +224,14 @@ end
 
 # A "modulated jacobian-free Newton-Krylov solver"
 
-A Newton-Krylov solver for solving stable equilibria of ẋ = -f(x), i.e.,
-solutions to f(x) = 0 satisfying Reλ > 0 for all λ \in σ(∂f(x)). The choice
-of -f as opposed to f is motivated by the gradient flow case.
+A Newton-Krylov solver for computing stable equilibria of ẋ = -f(x), i.e.,
+solutions to f(x) = 0 satisfying Reλ > 0 for all λ ∈ σ(∂f(x)). (The choice
+of -f as opposed to f is motivated by the gradient flow case.)
 
 ## Required Arguments
 
 * `f` : evaluate nonlinear system
-* `x0` : initial condition
+* `x0` : initial condition for search
 
 ## Keyword Arguments
 
@@ -241,7 +241,7 @@ of -f as opposed to f is motivated by the gradient flow case.
 * `hfd = 1e-7`
 * `P = I, precon_prep = (P, x) -> P`
 * `verbose = 1`
-* `linesearch = lsdefault`
+* `linesearch = lsforce`
 
 ## Output
 
@@ -255,7 +255,7 @@ function nsolistab{T}(f, x0::Vector{T};
                   hfd = 1e-7,
                   P = I, precon_prep = (P, x) -> P,
                   verbose = 1,
-                  linesearch = lsdefault )
+                  linesearch = lsforce )
    debug = verbose > 2
    progressmeter = verbose == 1
 

@@ -118,7 +118,7 @@ end
 """
 A very crude step-length selection for the pre-asymptotic regime
 """
-function lsdefault(x, p, α_old, E, dE, f0, P, maxstep, K;
+function lsforce(x, p, α_old, E, dE, f0, P, maxstep, K;
             Ca = 0.2, Cw = 0.9, minα = 1e-6, αinit = :one)
    # in this case, we do something very crude:
    #   take same step as before, then do one line-search step
