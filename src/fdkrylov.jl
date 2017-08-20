@@ -531,13 +531,13 @@ Here, D = diag(λ₁, λ₂, …) is the diagonal matrix of ordered eigenvalues
 see below what happens if J is not diagonalisable.
 
 `darnoldi` first uses a (possibly preconditioned) (block-)arnoldi iteration to compute
-a reasonable approximation to J in the form J = P V T V' P. Then it diagonalises
-T = Q D Q', replaces D with g(D) as above. This gives an approximation G to g(H).
+an approximation to  J in the form J = P V H V'. Then it diagonalises
+H = X D V⁻¹, replaces D with g(D) as above. This gives an approximation G to g(J).
 The method terminates if `pinv(G) b` yields a solution of sufficiently high accuracy
 (residual).
 
-In the Arnoldi iterations the matrix vector product H * u
-is replaced with the finite-difference operation (∇E(xc + h u) - ∇E(xc))/h;
+In the Arnoldi iterations the matrix vector product J * u
+is replaced with the finite-difference operation (f(xc + h u) - f(xc))/h;
 see also `dirder` and `dirderinf`.
 
 ## Required Parameters
@@ -554,11 +554,10 @@ see also `dirder` and `dirderinf`.
 
 * `P` : preconditioner (default: I;  minimally needs to define `*` and `\` )
 * `V0` : initial subspace (default: P \ b)
-* `eigatol`, `eigrtol`: tolerance on the first eigenvalue; TODO: make this a tolerance on the first n eigenvalues where n is the number of starting vectors????
 * `debug`: show debug information (true/false)
 * `hfd` : finite-difference parameter
 * `dirder` : function to compute the directional derivative; see
-         `dirderinf` for format; TODO: replace with an abstract matrix-vector product
+         `dirderinf` for format
 * `ORTHTOL` : orthogonality tolerance parameter
 * `Hmul` : the finite-difference operation can in principle be replaced by
          an arbitrary operator specifying the matrix-vector product
@@ -566,19 +565,12 @@ see also `dirder` and `dirderinf`.
 ## Returns
 
 * `x` : approximate solution
-* `G` : of type `LanczosMatrix`, to extract information about the computed operator
+/** `G` : of type `LanczosMatrix`, to extract information about the computed operator*/
 * `numf` : number of f evaluations
 * `success` : true if termination criteria are satisfied, false if kmax is reached
 * `isnewton` : true if the hessian spectrum was left unmodified
 
-## Further Notes
-
-* Termination criterion: If g ≠ id then G * u - b is not in fact the residual
-of the equation we are trying to solve but only an approximation to that residual.
-Therefore the termination criterion is only approximately satisfied.
-
-* What is J is not diagonalisable? If `g = id` then `darnoldi` becomes a
-standard GMRES iteration. But if `g ≠ id` then the behaviour is undefined for now.
+For Further Notes see `?dlanczos`
 """
 function darnoldi( f0, f, xc, b, errtol, kmax, transform = identity;
                    P = I, V0 = P \ b,
