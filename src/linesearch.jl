@@ -118,7 +118,8 @@ end
 """
 A very crude step-length selection for the pre-asymptotic regime
 """
-function lsdefault(x, p, α_old, E, dE, f0, P, maxstep, K; Ca = 0.2, Cw = 0.9, minα = 1e-6)
+function lsdefault(x, p, α_old, E, dE, f0, P, maxstep, K;
+            Ca = 0.2, Cw = 0.9, minα = 1e-6, αinit = :one)
    # in this case, we do something very crude:
    #   take same step as before, then do one line-search step
    #   and pick the better of the two.
@@ -127,12 +128,17 @@ function lsdefault(x, p, α_old, E, dE, f0, P, maxstep, K; Ca = 0.2, Cw = 0.9, m
    tol = Cw * abs(g0)
    maxα = maxstep / norm(p, Inf)
    numdE = 0
-   # if P == I
-   #    α1 = 0.5 + 0.33 * α_old
-   # else
-   #    α1 = 0.66 * α_old
-   # end
-   α1 = 1.0
+   if αinit == :one
+      α1 = 1.0
+   elseif αinit == :heuristic
+      if P == I
+         α1 = 0.5 + 0.33 * α_old
+      else
+         α1 = 0.66 * α_old
+      end
+   else
+      error("unknown `αinit`")
+   end
    αt = min(α1, maxα)
    xt = x + αt * p
    ft = dE(xt)

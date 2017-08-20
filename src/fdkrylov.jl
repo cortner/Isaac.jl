@@ -637,7 +637,7 @@ function darnoldi( f0, f, xc, b, errtol, kmax, transform = identity;
       D, X = eig(H)
       Dmod = transform(D)
       # residual estimate for the old x
-      res = norm(AxV * (V'*x) - b)   # V'*x recovers the xV below
+      res = norm(  P * (V * (X * (Dmod .* (X \ (V'*x))))) - b )
       # new x (remember the old)
       #     A ≈ P V V' * Y V' = P V H V'     =>     A⁻¹ ≈ V H⁻¹ V' P⁻¹
       xV = X * (Dmod .\ (X \ (V' * bP)))  # coefficients of x in V
@@ -648,7 +648,7 @@ function darnoldi( f0, f, xc, b, errtol, kmax, transform = identity;
          res = norm(AxV * xV - b)
       end
       if debug
-         @printf("      %d    %.2e \n", numf, res/norm(b))
+         @printf("      %d    %.2e   %.2e \n", numf, res/norm(b), norm(x-x_old, Inf))
       end
 
       # CHECK FOR SUCCESFUL TERMINATION
