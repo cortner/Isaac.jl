@@ -1,7 +1,8 @@
 
 # Notes on Preconditioned Arnoldi
 
-This is a brief note on how the preconditioned Arnoldi process is implemented.
+This is a brief note, mostly for myself as a record, on how the preconditioned Arnoldi
+process is implemented.
 
 ## Standard Arnoldi
 
@@ -63,6 +64,17 @@ and $w_j$ the corresponding approximate eigenvectors.
 
 ## With metric
 
- - what advantage is there in considering $V^\top M V = I$?
- - The case of hermitian $A$ and $P$ is interesting because $P^{-1} A$ loses
-this symmetry. But maybe one simple shouldn't care about it! This is to be explored. Taking $M = P$ would help here, because it would preserve this symmetry.
+We can consider orthogonalising the Krylov vectors w.r.t. an IP $u^T M v$ where
+$M$ is spd. It is important to stress, however, that no matter how we orthogonalise
+we always get the same Krylov subspace ($P = I$ for simplicity)
+$$
+  K_M = {\rm span} \\{ v_0, A v_0, A\^2 v_0, \dots, A\^{M-1} v_0\\}
+$$
+
+A potential advantage of general $M$ for the case when $A$ is
+self-adjoint (hermitian), is that choosing $M = P$ leads to $H$ being hermitian
+as well, hence it is tri-diagonal instead of diagonal.
+
+In general it is unclear however whether this has any advantage other than
+possibly numerical stability, and it would come at the cost of a more
+complex implementation?
