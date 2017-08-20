@@ -13,6 +13,7 @@ At present a small selection of Jacobian-Free Newton-Krylov solvers is implement
 * `nsoli` : a translation of (a subset of) [Tim Kelley's](http://www4.ncsu.edu/~ctk/) `nsoli.m` [Matlab code](http://www4.ncsu.edu/~ctk/newton/SOLVERS/nsoli.m) to Julia (with permission). Any bugs or errors are of course my own.
 * `nsolimod` : A *Modulated Jacobian-Free Newton-Krylov Solver* : instead of computing general critical points of an energy or roots of a nonlinear system this solver computes only critical points of a specific spectrum signature. For example only minima, or only index-1 saddles.
 * `nkminim` : a wrapper for `nsolimod` choosing better method parameters for minimisation, specifically a better suited line-search.
+* `nsolistab` : an `nsolimod`-type solver which doesn't require gradient structure but so far it does not support arbitrary modulations.
 
 ## Getting Started
 
@@ -28,6 +29,7 @@ using Isaac
 ?nsoli
 ?nsolimod
 ?nkminim
+?nsolistab
 ```
 in the REPL or IJulia
 
@@ -68,14 +70,3 @@ The second code, `nsolimod` is still very much experimental, and in particular c
 `nsolimod` is written with expensive objectives in mind where each gradient (or function) evaluation far outweighs the cost of the optimisation boilerplate and of the linear algebra. Over time, I hope to optimise the code so that it becomes competitive for cheap objectives.
 
 The main use case for `nsolimod` at the moment is saddle-search. On my tests systems (a few crystalline solids and a few molecules) `nsolimod` outperforms all algorithms I have tested against, both in terms of performance and robustness.  (though I have not yet exhausted the space of all saddle search methods)
-
-## TODO
-
-* Rename and register the repository
-* generalise `nsolimod` to nonlinear systems
-* improve linesearch, especially for minimisation
-* Performance tuning
-* current implementation of `dlanzcos` is very naive as it does not exploit the usual structures in Lanczos iterations; this should eventually be fixed or maybe just move to Arnoldi
-* integrate with `Optim.jl`, `NLsolve.jl`, `NLSolversBase.jl`
-* generalise codes to admit actual hessian-vector products and full hessian inversion, depending on whether the objective is `OnceDifferentiable` or `TwiceDifferentiable`
-* add more examples

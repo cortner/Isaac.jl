@@ -52,8 +52,7 @@ end
 at the moment, this is just quadratic back-tracking
 
 TODO:
- * switch to LineSearches.jl
- *
+ * probably switch to LineSearches.jl
 """
 function lsarmijo(x, p, α_old, E, dE, dE0, P, maxstep, K = nothing;
                   Ca = 0.2)
@@ -118,7 +117,7 @@ end
 """
 A very crude step-length selection for the pre-asymptotic regime
 """
-function lsdefault(x, p, α_old, E, dE, f0, P, maxstep, K;
+function lsforce(x, p, α_old, E, dE, f0, P, maxstep, K;
             Ca = 0.2, Cw = 0.9, minα = 1e-6, αinit = :one)
    # in this case, we do something very crude:
    #   take same step as before, then do one line-search step
@@ -139,22 +138,46 @@ function lsdefault(x, p, α_old, E, dE, f0, P, maxstep, K;
    else
       error("unknown `αinit`")
    end
-   αt = min(α1, maxα)
-   xt = x + αt * p
-   ft = dE(xt)
-   gt = φ(ft)
+   α1 = min(α1, maxα)
+   x1 = x + α1 * p
+   f1 = dE(x1)
+   g1 = φ(f1)
    numdE += 1
 
-   # check whether initial trial satisfies the Wolfe condition
-   # @show αt, g0, gt
-   while (2 * g0 > gt) || (gt > 0.2 * abs(g0))
-      αt *= 0.5
+   acceptstep = gg -> 2 * g0 < gg < 0.2 * abs(g0)
+
+   if acceptstep(g1)
+      # put a straight line through (0, g0), (α1, g1) and intersect with 0
+      if abs(g1-g0)/α1 < 1e-3
+         αt = 0.5 * α1
+      else
+         αt = - g0 * α1 / (g1-g0)   # g0 + α * (g1-g0)/α1 = 0
+      end
+      # make sure the step is not too small
+      αt = max(α1/4, αt)
+      # and not too large
+      αt = min(α1*2, maxα, αt)
+
+      # update configuration
       xt = x + αt * p
       ft = dE(xt)
-      numdE += 1
       gt = φ(ft)
+      numdE += 1
+      # check whether to return xt or x1
+      if !acceptstep(gt) || abs(gt) > abs(g1)
+         gt, αt, xt = g1, α1, x1
+      end
+   else
+      αt, gt, ft, xt = α1, g1, f1, x1
+      # reduce step-length until the new gradient is not too bad
+      while (2 * g0 > gt) || (gt > 0.2 * abs(g0))
+         αt *= 0.5
+         xt = x + αt * p
+         ft = dE(xt)
+         numdE += 1
+         gt = φ(ft)
+      end
    end
-   # @show αt, gt
 
    return αt, xt, ft, dualnorm(P, ft), numdE
 end
