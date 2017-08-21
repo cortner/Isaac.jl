@@ -428,7 +428,7 @@ function dlanczos(f0, f, xc, b, errtol, kmax, transform = identity;
       res = nkdualnorm(P,  P * (V * (Q * (E .* (Q' * (V' * (P * x)))))) - b )
       # new x and λ (remember the old)
       g = Q * (E .\ (Q' * (V' * b)))
-      x, x_old = V * g, x
+      x, x_old = real(V * g), x
       push!(λ_old, λ)
       λ = D[1:nevals]
       # if E == D then g(H) = H hence we can estimate the *actual* and *current* residual

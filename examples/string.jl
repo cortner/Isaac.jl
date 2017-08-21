@@ -63,7 +63,7 @@ t = [((x1-x0)/norm(x1-x0)) for s in linspace(.0, 1., N)]; # tangent along path
 
 PATHx, PATHlog = SaddleSearch.run!(path, Energy, Gradient, x, t)
 
-contourPlot(PATHx)
+# contourPlot(PATHx)
 
 # convergencePlot(PATHlog, ("α = $α"), :blue, :solid)
 
@@ -112,9 +112,10 @@ for n = 1:N
 end
 lamx0 = project( [zeros(N-1); z[:]] )
 
-lamx0, nde = Isaac.nsolistab(fstring1, lamx0; maxstep = 0.1, verbose = 3)
+# lamx, nde = Isaac.nsolistab(fstring1, lamx0; maxstep = 0.1, verbose = 3)
+lamx, nde, ierr, xhist = Isaac.nsoli(lamx0, fstring1)
 
-
+ierr
 
 
 
