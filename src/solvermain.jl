@@ -255,7 +255,9 @@ function nsolistab{T}(f, x0::Vector{T};
                   hfd = 1e-7,
                   P = I, precon_prep = (P, x) -> P,
                   verbose = 1,
-                  linesearch = lsforce )
+                  linesearch = lsforce,
+                  project = identity
+               )
    debug = verbose > 2
    progressmeter = verbose == 1
 
@@ -283,7 +285,7 @@ function nsolistab{T}(f, x0::Vector{T};
       itc += 1
 
       p, inner_numdE, success, isnewton =
-            darnoldi(f0, f, x, -f0, eta * norm(f0), kmax, stabilise;
+            darnoldi(f0, y -> f(project(y)), x, -f0, eta * norm(f0), kmax, stabilise;
                          P = P, debug = debug, hfd = hfd)
 
       numdE += inner_numdE
@@ -296,7 +298,7 @@ function nsolistab{T}(f, x0::Vector{T};
       if isnewton   # if we are in the Newton regime, then we always try to reduce the residual
          iarm = 0
          α = αt = 1.0
-         xt = x + αt * p
+         xt = project(x + αt * p)
          ft = f(xt)
          numdE += 1
          nf0 = norm(f0)
@@ -316,7 +318,7 @@ function nsolistab{T}(f, x0::Vector{T};
                error(" Armijo failure, step-size too small")
             end
 
-            xt = x + αt * p
+            xt = project(x + αt * p)
             ft = f(xt)
             numdE += 1
             nft = norm(ft)
