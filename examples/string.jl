@@ -2,7 +2,7 @@
 using SaddleSearch
 using SaddleSearch.TestSets
 using Plots, Dierckx, LaTeXStrings
-
+using Isaac
 
 function contourPlot{T}(x::Vector{T})
     pyplot(leg=false, ticks=nothing)
@@ -104,18 +104,36 @@ function project(lamx)
     return [λ; x[:]]
 end
 
-using Isaac
-
-z = zeros(d, N)
-for n = 1:N
-    z[:,n] = x[n]
+function fneb(x)
+    k = 0.1
+    N = length ÷ d
+    x = reshape(x, d, N)
+    dE = [Gradient(x[:,i]) for i=1:N]
+    # central finite differences
+    dxds = [(x[i+1]-x[i-1])/2 for i=2:N-1]
+    dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
+    dxds = [ zeros(d); dxds; zeros(d) ]
+    # elastic
+    Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], dxds[i]) * dxds[i] for i=2:N-1]
+    Fk = [zeros(d); Fk; zeros(d)]
+    # nudge
+    dE0⟂ = [dE0[i] - dot(dE0[i],dxds[i])*dxds[i] for i = 1:N]
+    return dE0⟂ - Fk
 end
-lamx0 = project( [zeros(N-1); z[:]] )
 
-# lamx, nde = Isaac.nsolistab(fstring1, lamx0; maxstep = 0.1, verbose = 3)
-lamx, nde, ierr, xhist = Isaac.nsoli(lamx0, fstring1)
+# z = zeros(d, N)
+# for n = 1:N
+#     z[:,n] = x[n]
+# end
+# lamx0 = project( [zeros(N-1); z[:]] )
+#
+# # lamx, nde = Isaac.nsolistab(fstring1, lamx0; maxstep = 0.1, verbose = 3)
+# lamx, nde, ierr, xhist = Isaac.nsoli(lamx0, fstring1)
+#
+# ierr
 
-ierr
+
+
 
 
 
