@@ -291,6 +291,12 @@ function nsolistab{T}(f, x0::Vector{T};
       numdE += inner_numdE
       if debug; @show isnewton; end
 
+      # TODO: move this to darnoldi!
+      if norm(imag(p), Inf) > 1e-10
+         error("why does `p` have non-trivial immaginary part?")
+      end
+      p = real(p)
+
       # ~~~~~~~~~~~~~~~~~~ LINESEARCH ~~~~~~~~~~~~~~~~~~~~~~
       # output of linesearch will be: α, xt (new x), ft (new dE), nft (norm)
       #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
