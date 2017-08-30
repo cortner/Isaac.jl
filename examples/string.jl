@@ -140,7 +140,7 @@ function vecs2dof(X)
 end
 
 function fneb(x)
-    k = 0.001
+    k = 1.0
     X = dof2vecs(x)
     N = length(X)
     dE = [Gradient(X[i]) for i=1:N]
@@ -148,7 +148,7 @@ function fneb(x)
     dxds = [ vecsign(X[i+1]-X[i-1]) for i=2:N-1 ]
     dxds = [ [zeros(d)]; dxds; [zeros(d)] ]
     # elastic
-    Fk = k*[dot(X[i+1] - 2*X[i] + X[i-1], dxds[i]) * dxds[i] for i=2:N-1]
+    Fk = k*N^2*[dot(X[i+1] - 2*X[i] + X[i-1], dxds[i]) * dxds[i] for i=2:N-1]
     Fk = [[zeros(d)]; Fk; [zeros(d)]]
     # nudge
     dE0⟂ = [dE[i] - dot(dE[i],dxds[i])*dxds[i] for i = 1:N]
@@ -203,7 +203,8 @@ J = Dfneb(zn)
 Plots.plot(eigvals(J), marker = :o, lw = 0)
 Plots.plot!([0.0], [0.0], marker = :o )
 
-sort(abs(eigvals(J)))
+
+sort(abs(eigvals(J)))[1:25]
 cond(J)
 
 sort(abs(eigvals(J)))[1:26]
