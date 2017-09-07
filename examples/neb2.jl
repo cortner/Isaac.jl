@@ -53,6 +53,11 @@ Pneb(x, μ) = Dfneb(x, k, x->μ*x)
 # load a very good starting guess so we can be sure (hope) to be in the
 # region of attraction of Newton's method
 z = JLD.load(path * "near.jld", "z")
+
+N = length(z) ÷ d
+z = reshape(z, d, N)
+z = z[:, 1:2:end]
+z = z[:]
 N = length(z) ÷ d
 
 println("Trying a few Newton steps")
@@ -73,8 +78,6 @@ numF = round(Int, nde[end,2])
 
 println("Trying NSOLI-STAB")
 x = copy(z)
-μ = 100.0
-P = y -> Pneb(y, μ)
 z_nsoli, numF = Isaac.nsolistab(Fneb, x, tol=1e-5)
 @show norm(Fneb(z_nsoli), Inf)
 @show numF
@@ -104,18 +107,18 @@ z_nsoli, numF = Isaac.nsolistab(Fneb, x, tol=1e-5,
 println("Trying Preconditioned NSOLI")
 x = copy(z)
 pFneb = y ->  P(y) \ Fneb(y)
-z_nsoli, nde, ierr, xhist = Isaac.nsoli(x, pFneb, atol=1e-5, rtol=1e-5)
+z_nsoli, nde, ierr, xhist = Isaac.nsoli(x, pFneb, atol=1e-7, rtol=1e-7)
 numF = round(Int, nde[end,2])
 @show norm(Fneb(z_nsoli), Inf)
 @show numF
 
 
 
-using Plots
-
-J = DFneb(z)
-p = P(z)
-λ, V = eig(p \ J)
-plot(real(λ), imag(λ), lw = 0, m = :o)
-
-minimum(real.(λ))
+# using Plots
+#
+# J = DFneb(z)
+# p = P(z)
+# λ, V = eig(p \ J)
+# plot(real(λ), imag(λ), lw = 0, m = :o)
+#
+# minimum(real.(λ))
