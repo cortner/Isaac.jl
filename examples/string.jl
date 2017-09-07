@@ -199,6 +199,8 @@ end
 
 contourPlot(dof2vecs(zn))
 
+zn = load("eq.jld", "zn")
+@show norm(fneb(zn), Inf)
 J = Dfneb(zn)
 Plots.plot(eigvals(J), marker = :o, lw = 0)
 Plots.plot!([0.0], [0.0], marker = :o )
