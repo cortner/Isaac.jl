@@ -125,7 +125,7 @@ function dgmres(f0, f, xc, errtol, kmax, reorth = 1, x = zeros(f0); hfd = 1e-7)
    k = 0
 
    # GMRES iteration
-   while rho > errtol && k < kmax
+   while rho > errtol && k < kmax-1
       k = k+1;
 
       # Call directional derivative function.
