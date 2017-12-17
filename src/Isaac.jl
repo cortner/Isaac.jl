@@ -1,6 +1,7 @@
 
 module Isaac
 
+include("testsets.jl")
 
 # linsearch  method
 include("linesearch.jl")
@@ -14,8 +15,8 @@ include("nsoli.jl")
 # the main transformed Newton solver
 include("solvermain.jl")
 
-# interfaces to Optim.jl and NLsolve.jl
-include("interfaces.jl")
+# # interfaces to Optim.jl and NLsolve.jl
+# include("interfaces.jl")
 
 
 end

@@ -1,7 +1,6 @@
 
-using SaddleSearch
-using SaddleSearch.TestSets
-using SaddleSearch.TestSets: hessprecond, precond
+using Isaac.TestSets
+using Isaac.TestSets: precond
 
 
 println("Testing nsolimod for minimisation")
@@ -35,13 +34,13 @@ for (n, prec) in [ (N1, false), (N1, true), (N2, false), (N2, true) ]
    @test norm(dE_plap(x), Inf) < 1e-5
    xm = x
 
-   println("Testing nsolistab, p-Laplacian, n = $n, precon = $prec")
-   x, ndE = nsolistab(dE_plap, x0; P = P)
-   println("   num_dE = ", ndE)
-   println("   |∇E| = ", norm(dE_plap(x), Inf))
-   @test norm(dE_plap(x), Inf) < 1e-5
-
-   @test norm(xm - x, Inf) < 1e-5
+   # println("Testing nsolistab, p-Laplacian, n = $n, precon = $prec")
+   # x, ndE = nsolistab(dE_plap, x0; P = P)
+   # println("   num_dE = ", ndE)
+   # println("   |∇E| = ", norm(dE_plap(x), Inf))
+   # @test norm(dE_plap(x), Inf) < 1e-5
+   #
+   # @test norm(xm - x, Inf) < 1e-5
 end
 
 
@@ -55,7 +54,8 @@ for (R, prec) in [(R1, false), (R1, true), (R2, false), (R2, true)]
    V = LJVacancy2D(R=R, bc = :clamped)
    E, dE = objective(V)
    x0, v0 = ic_dimer(V, :far)
-   P, Pprep = prec ? (precond(V, x0), (P, x) -> precond(V, x)) : (I, (P,x)->P)
+   P, Pprep = prec ? (precond(V, x0),
+                      (P, x) -> Isaac.TestSets.precond(V, x)) : (I, (P,x)->P)
 
    println("Testing nkminim, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
    x, ndE = nkminim(E, dE, x0; P = P, precon_prep = Pprep)
@@ -64,13 +64,13 @@ for (R, prec) in [(R1, false), (R1, true), (R2, false), (R2, true)]
    @test norm(dE(x), Inf) < 1e-5
    xm = x
 
-   println("Testing nsolistab, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
-   x, ndE = nsolistab(dE, x0; P = P, precon_prep = Pprep)
-   println("   num_dE = ", ndE)
-   println("   |∇E| = ", norm(dE(x), Inf))
-   @test norm(dE(x), Inf) < 1e-5
-
-   @test norm(xm - x, Inf) < 1e-5
+   # println("Testing nsolistab, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
+   # x, ndE = nsolistab(dE, x0; P = P, precon_prep = Pprep)
+   # println("   num_dE = ", ndE)
+   # println("   |∇E| = ", norm(dE(x), Inf))
+   # @test norm(dE(x), Inf) < 1e-5
+   #
+   # @test norm(xm - x, Inf) < 1e-5
 end
 
 
@@ -80,7 +80,8 @@ if notCI
       V = LJVacancy2D(R=R, bc = :clamped)
       E, dE = objective(V)
       x0, v0 = ic_dimer(V, :near)
-      P, Pprep = prec ? (precond(V, x0), (P, x) -> precond(V, x)) : (I, (P,x)->P)
+      P, Pprep = prec ? (precond(V, x0),
+               (P, x) -> Isaac.TestSets.precond(V, x)) : (I, (P,x)->P)
 
       println("Testing nkminim, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
       x, ndE = nkminim(E, dE, x0; P = P, precon_prep = Pprep, verbose=0, update_α_old = true)
@@ -89,13 +90,13 @@ if notCI
       @test norm(dE(x), Inf) < 1e-5
       xm = x
 
-      println("Testing nsolistab, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
-      x, ndE = nsolistab(dE, x0; P = P, precon_prep = Pprep, verbose=0)
-      println("   num_dE = ", ndE)
-      println("   |∇E| = ", norm(dE(x), Inf))
-      @test norm(dE(x), Inf) < 1e-5
-
-      @test norm(xm - x, Inf) < 1e-5
+      # println("Testing nsolistab, 2D LJ Vacancy, R = $(round(Int,R)), precon = $(!(P==I))")
+      # x, ndE = nsolistab(dE, x0; P = P, precon_prep = Pprep, verbose=0)
+      # println("   num_dE = ", ndE)
+      # println("   |∇E| = ", norm(dE(x), Inf))
+      # @test norm(dE(x), Inf) < 1e-5
+      #
+      # @test norm(xm - x, Inf) < 1e-5
    end
 end
 
