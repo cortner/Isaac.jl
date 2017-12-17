@@ -39,6 +39,9 @@ Energy, Gradient = objective(V)
 d = 2
 
 
+z = JLD.load(path * "near.jld", "z")
+contourPlot(dof2vecs(z))
+
 # ================ NEB =================
 
 vecsign(x) = x / norm(x)

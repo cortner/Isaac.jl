@@ -53,12 +53,12 @@ Pneb(x, μ) = Dfneb(x, k, x->μ*x)
 # load a very good starting guess so we can be sure (hope) to be in the
 # region of attraction of Newton's method
 z = JLD.load(path * "near.jld", "z")
+N = length(z) ÷ d
 
-N = length(z) ÷ d
-z = reshape(z, d, N)
-z = z[:, 1:2:end]
-z = z[:]
-N = length(z) ÷ d
+# z = reshape(z, d, N)
+# z = z[:, 1:2:end]
+# z = z[:]
+# N = length(z) ÷ d
 
 println("Trying a few Newton steps")
 x = copy(z)
@@ -122,3 +122,15 @@ numF = round(Int, nde[end,2])
 # plot(real(λ), imag(λ), lw = 0, m = :o)
 #
 # minimum(real.(λ))
+
+
+
+# bad starting guess
+
+d = 2
+z = JLD.load(path * "far.jld", "z")
+
+x = copy(z)
+z_nsoli, numF = Isaac.nsolistab(Fneb, x, tol=1e-5, maxstep = 0.1, verbose = 3)
+@show norm(Fneb(z_nsoli), Inf)
+@show numF
