@@ -482,189 +482,189 @@ end
 
 
 
-# # """
-# # `immutable KrylovMatrix`: (todo: write documentation)
-# #
-# # We represent a matrix projected to a Krylov subspace as
-# #
-# # P * V * X * diagm(D) * X⁻¹ * V' * P
-# #
-# # and its inverse as
-# #
-# # V * X * diagm(D.⁻¹) * X⁻¹ * V'
-# # """
-# # immutable KrylovMatrix{T}
-# #    V::Matrix{T}   # orthogonal component
-# #    X::Matrix{T}   # non-orthogonal component
-# #    D::Vector{T}   # diagonal component
-# #    P              # preconditioner (we don't know anything about this object)
-# # end
-# #
-# # Base.length(K::KrylovMatrix) = length(K.D)
-# # Base.rank(K::KrylovMatrix) = length(K)
-# # Base.getindex(K::KrylovMatrix, i) = K.D[i], K.V[:,i]
-# # import Base: *, \, A_mul_B!
-# # *(K::LanczosMatrix, v) = K.P * (K.V * (K. X * (K.D .* (K.X \ (K.V' * (K.P * v))))))
-# # A_mul_B!(out::Array{Float64,1}, L::LanczosMatrix, x::Array{Float64,1}) = copy!(out, L * x)
-# # \(K::LanczosMatrix, f) = K.V * ( K.D.^(-1) .* (K.V' * f) )
-#
-#
 # """
-# `stabilise(D::Vector) = D .* sign.(real.(D))`
+# `immutable KrylovMatrix`: (todo: write documentation)
 #
-# a Lipschitz-continuous spectrum transformation that stabilises the origin
+# We represent a matrix projected to a Krylov subspace as
+#
+# P * V * X * diagm(D) * X⁻¹ * V' * P
+#
+# and its inverse as
+#
+# V * X * diagm(D.⁻¹) * X⁻¹ * V'
 # """
-# stabilise(D::Vector) = D .* sign.(real.(D))
-#
-#
-# """
-# darnoldi(f0, f, xc, errtol, kmax, transform; kwargs...)
-#       -> u, G, numf, success, isnewton
-#
-# Given f : ℝᴺ → ℝᴺ with jacobian J = ∂f(x) and b ∈ ℝᴺ  `darnoldi` computes an
-# approximate solution `u` to the system
-#    g(J) u = b
-# where g(J) ∈ ℝᴺˣᴺ is a transformation of J = X D X⁻¹  of the form
-#    g(J) = X g(D) X⁻¹
-# Here, D = diag(λ₁, λ₂, …) is the diagonal matrix of ordered eigenvalues
-# (λ₁ being the smallest). More on the transformation g see below. Also
-# see below what happens if J is not diagonalisable.
-#
-# `darnoldi` first uses a (possibly preconditioned) (block-)arnoldi iteration to compute
-# an approximation to  J in the form J = P V H V'. Then it diagonalises
-# H = X D V⁻¹, replaces D with g(D) as above. This gives an approximation G to g(J).
-# The method terminates if `pinv(G) b` yields a solution of sufficiently high accuracy
-# (residual).
-#
-# In the Arnoldi iterations the matrix vector product J * u
-# is replaced with the finite-difference operation (f(xc + h u) - f(xc))/h;
-# see also `dirder` and `dirderinf`.
-#
-# ## Required Parameters
-#
-# * `f0` : f(xc)
-# * `f` : function to evaluate ∇E
-# * `xc` : current point
-# * `b` : right-hand side in the equation
-# * `errtol` : max-norm residual tolerance for termination
-# * `kmax` : maximum number of lanzcos iterations
-# * `transform` : the g transformation, default: id
-#
-# ## KW parameters
-#
-# * `P` : preconditioner (default: I;  minimally needs to define `*` and `\` )
-# * `V0` : initial subspace (default: P \ b)
-# * `debug`: show debug information (true/false)
-# * `hfd` : finite-difference parameter
-# * `dirder` : function to compute the directional derivative; see
-#          `dirderinf` for format
-# * `ORTHTOL` : orthogonality tolerance parameter
-# * `Hmul` : the finite-difference operation can in principle be replaced by
-#          an arbitrary operator specifying the matrix-vector product
-#
-# ## Returns
-#
-# * `x` : approximate solution
-# /** `G` : of type `LanczosMatrix`, to extract information about the computed operator*/
-# * `numf` : number of f evaluations
-# * `success` : true if termination criteria are satisfied, false if kmax is reached
-# * `isnewton` : true if the hessian spectrum was left unmodified
-#
-# For Further Notes see `?dlanczos`
-# """
-# function darnoldi( f0, f, xc, b, errtol, kmax, transform = identity;
-#                    P = I, V0 = P \ b,
-#                    debug = false, hfd = 1e-7,
-#                    dirder = dirderinf,
-#                    Hmul = z -> dirder(f, f0, xc, z, hfd),
-#                    ORTHTOL = 1e-10 )
-#
-#    # make sure V0 is given in the correct format (Matrix)
-#    if isa(V0, Vector)
-#       V0 = reshape(V0, length(V0), 1)
-#    end
-#
-#    # initialise some variables
-#    p = size(V0, 2)     # block size
-#    d = length(f0)      # problem dimension
-#    @assert kmax <= d
-#    numf = 0            # count f evaluations
-#    isnewton = false    # remember whether the output is a newton direction
-#    success = false     # flag for termination
-#
-#    # initialise Krylov subspace and more
-#    V = zeros(d,0)      # store the Krylov basis
-#    AxV = zeros(d, 0)   # store A vⱼ
-#    Y = zeros(d, 0)     # store P \ A vⱼ
-#    X = Matrix{Complex128}()     # H = X * D * inv(X) becomes
-#    Dmod = Vector{Complex128}()  #    Hmod = X * Dmod * inv(X)
-#
-#    # initialise Krylov subspace;
-#    for j = 1:size(V0, 2)
-#       vj = orthogonalise(V0[:,j], V)
-#       if dot(vj, V0[:,j]) < ORTHTOL
-#          warn("the initial subspace matrix V0 does not have full rank")
-#       end
-#       V, AxV, Y = appendkrylov(V, AxV, Y, vj, Hmul, P)
-#       numf += 1
-#    end
-#
-#    # prepare for the Arnoldi loop
-#    j = 1
-#    x = zeros(d)
-#    bP = P \ b
-#
-#    if debug
-#       @printf("      numf     |Ax-b|/|b| \n")
-#    end
-#
-#    # start the block-arnoldi process; when we have kmax v-vectors we stop
-#    while size(V, 2) <= kmax
-#
-#       # At this point we have V, AxV and Y = P \ AxV  available, so we can
-#       # now solve the projected linear system and eigenvalue problem
-#       n = size(V, 2)
-#       H = V' * Y
-#       # make the specified spectrum transformation
-#       D, X = eig(H)
-#       Dmod = transform(D)
-#       # residual estimate for the old x
-#       res = norm(  P * (V * (X * (Dmod .* (X \ (V'*x))))) - b )
-#       # new x (remember the old)
-#       #     A ≈ P V V' * Y V' = P V H V'     =>     A⁻¹ ≈ V H⁻¹ V' P⁻¹
-#       xV = X * (Dmod .\ (X \ (V' * bP)))  # coefficients of x in V
-#       x, x_old = V * xV, x
-#       # if Dmod == D then this was a newton step
-#       isnewton = (norm(Dmod - D, Inf) < 1e-7)
-#       if isnewton
-#          res = norm(AxV * xV - b)
-#       end
-#       if debug
-#          @printf("      %d    %.2e   %.2e \n", numf, res/norm(b), norm(x-x_old, Inf))
-#       end
-#
-#       # CHECK FOR SUCCESFUL TERMINATION
-#       #  * if size(V,2) == d then we have assembled the entire matrix
-#       if (size(V,2) == d) || (res < errtol)
-#          success = true
-#          break
-#       end
-#
-#       # CHECK FOR UNSUCCESFUL TERMINATION
-#       if size(V,2) == kmax
-#          success = false
-#          break
-#       end
-#
-#       # add the next Krylov vector
-#       if j <= size(V,2)   # we have Krylov vectors left to cycle through
-#          w = orthogonalise(Y[:, j], V)
-#          V, AxV, Y = appendkrylov(V, AxV, Y, w, Hmul, P)
-#          numf += 1 # (the call is in appendkrylov)
-#          j += 1
-#       else
-#          error("how did we get here?")
-#       end
-#    end
-#    return x, numf, success, isnewton
+# immutable KrylovMatrix{T}
+#    V::Matrix{T}   # orthogonal component
+#    X::Matrix{T}   # non-orthogonal component
+#    D::Vector{T}   # diagonal component
+#    P              # preconditioner (we don't know anything about this object)
 # end
+#
+# Base.length(K::KrylovMatrix) = length(K.D)
+# Base.rank(K::KrylovMatrix) = length(K)
+# Base.getindex(K::KrylovMatrix, i) = K.D[i], K.V[:,i]
+# import Base: *, \, A_mul_B!
+# *(K::LanczosMatrix, v) = K.P * (K.V * (K. X * (K.D .* (K.X \ (K.V' * (K.P * v))))))
+# A_mul_B!(out::Array{Float64,1}, L::LanczosMatrix, x::Array{Float64,1}) = copy!(out, L * x)
+# \(K::LanczosMatrix, f) = K.V * ( K.D.^(-1) .* (K.V' * f) )
+
+
+"""
+`stabilise(D::Vector) = D .* sign.(real.(D))`
+
+a Lipschitz-continuous spectrum transformation that stabilises the origin
+"""
+stabilise(D::Vector) = D .* sign.(real.(D))
+
+
+"""
+darnoldi(f0, f, xc, errtol, kmax, transform; kwargs...)
+      -> u, G, numf, success, isnewton
+
+Given f : ℝᴺ → ℝᴺ with jacobian J = ∂f(x) and b ∈ ℝᴺ  `darnoldi` computes an
+approximate solution `u` to the system
+   g(J) u = b
+where g(J) ∈ ℝᴺˣᴺ is a transformation of J = X D X⁻¹  of the form
+   g(J) = X g(D) X⁻¹
+Here, D = diag(λ₁, λ₂, …) is the diagonal matrix of ordered eigenvalues
+(λ₁ being the smallest). More on the transformation g see below. Also
+see below what happens if J is not diagonalisable.
+
+`darnoldi` first uses a (possibly preconditioned) (block-)arnoldi iteration to compute
+an approximation to  J in the form J = P V H V'. Then it diagonalises
+H = X D V⁻¹, replaces D with g(D) as above. This gives an approximation G to g(J).
+The method terminates if `pinv(G) b` yields a solution of sufficiently high accuracy
+(residual).
+
+In the Arnoldi iterations the matrix vector product J * u
+is replaced with the finite-difference operation (f(xc + h u) - f(xc))/h;
+see also `dirder` and `dirderinf`.
+
+## Required Parameters
+
+* `f0` : f(xc)
+* `f` : function to evaluate ∇E
+* `xc` : current point
+* `b` : right-hand side in the equation
+* `errtol` : max-norm residual tolerance for termination
+* `kmax` : maximum number of lanzcos iterations
+* `transform` : the g transformation, default: id
+
+## KW parameters
+
+* `P` : preconditioner (default: I;  minimally needs to define `*` and `\` )
+* `V0` : initial subspace (default: P \ b)
+* `debug`: show debug information (true/false)
+* `hfd` : finite-difference parameter
+* `dirder` : function to compute the directional derivative; see
+         `dirderinf` for format
+* `ORTHTOL` : orthogonality tolerance parameter
+* `Hmul` : the finite-difference operation can in principle be replaced by
+         an arbitrary operator specifying the matrix-vector product
+
+## Returns
+
+* `x` : approximate solution
+/** `G` : of type `LanczosMatrix`, to extract information about the computed operator*/
+* `numf` : number of f evaluations
+* `success` : true if termination criteria are satisfied, false if kmax is reached
+* `isnewton` : true if the hessian spectrum was left unmodified
+
+For Further Notes see `?dlanczos`
+"""
+function darnoldi( f0, f, xc, b, errtol, kmax, transform = identity;
+                   P = I, V0 = P \ b,
+                   debug = false, hfd = 1e-7,
+                   dirder = dirderinf,
+                   Hmul = z -> dirder(f, f0, xc, z, hfd),
+                   ORTHTOL = 1e-10 )
+
+   # make sure V0 is given in the correct format (Matrix)
+   if isa(V0, Vector)
+      V0 = reshape(V0, length(V0), 1)
+   end
+
+   # initialise some variables
+   p = size(V0, 2)     # block size
+   d = length(f0)      # problem dimension
+   @assert kmax <= d
+   numf = 0            # count f evaluations
+   isnewton = false    # remember whether the output is a newton direction
+   success = false     # flag for termination
+
+   # initialise Krylov subspace and more
+   V = zeros(d,0)      # store the Krylov basis
+   AxV = zeros(d, 0)   # store A vⱼ
+   Y = zeros(d, 0)     # store P \ A vⱼ
+   X = Matrix{Complex128}()     # H = X * D * inv(X) becomes
+   Dmod = Vector{Complex128}()  #    Hmod = X * Dmod * inv(X)
+
+   # initialise Krylov subspace;
+   for j = 1:size(V0, 2)
+      vj = orthogonalise(V0[:,j], V)
+      if dot(vj, V0[:,j]) < ORTHTOL
+         warn("the initial subspace matrix V0 does not have full rank")
+      end
+      V, AxV, Y = appendkrylov(V, AxV, Y, vj, Hmul, P)
+      numf += 1
+   end
+
+   # prepare for the Arnoldi loop
+   j = 1
+   x = zeros(d)
+   bP = P \ b
+
+   if debug
+      @printf("      numf     |Ax-b|/|b| \n")
+   end
+
+   # start the block-arnoldi process; when we have kmax v-vectors we stop
+   while size(V, 2) <= kmax
+
+      # At this point we have V, AxV and Y = P \ AxV  available, so we can
+      # now solve the projected linear system and eigenvalue problem
+      n = size(V, 2)
+      H = V' * Y
+      # make the specified spectrum transformation
+      D, X = eig(H)
+      Dmod = transform(D)
+      # residual estimate for the old x
+      res = norm(  P * (V * (X * (Dmod .* (X \ (V'*x))))) - b )
+      # new x (remember the old)
+      #     A ≈ P V V' * Y V' = P V H V'     =>     A⁻¹ ≈ V H⁻¹ V' P⁻¹
+      xV = X * (Dmod .\ (X \ (V' * bP)))  # coefficients of x in V
+      x, x_old = V * xV, x
+      # if Dmod == D then this was a newton step
+      isnewton = (norm(Dmod - D, Inf) < 1e-7)
+      if isnewton
+         res = norm(AxV * xV - b)
+      end
+      if debug
+         @printf("      %d    %.2e   %.2e \n", numf, res/norm(b), norm(x-x_old, Inf))
+      end
+
+      # CHECK FOR SUCCESFUL TERMINATION
+      #  * if size(V,2) == d then we have assembled the entire matrix
+      if (size(V,2) == d) || (res < errtol)
+         success = true
+         break
+      end
+
+      # CHECK FOR UNSUCCESFUL TERMINATION
+      if size(V,2) == kmax
+         success = false
+         break
+      end
+
+      # add the next Krylov vector
+      if j <= size(V,2)   # we have Krylov vectors left to cycle through
+         w = orthogonalise(Y[:, j], V)
+         V, AxV, Y = appendkrylov(V, AxV, Y, w, Hmul, P)
+         numf += 1 # (the call is in appendkrylov)
+         j += 1
+      else
+         error("how did we get here?")
+      end
+   end
+   return x, numf, success, isnewton
+end

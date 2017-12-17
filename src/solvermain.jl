@@ -219,151 +219,151 @@ end
 
 
 
-# """
-# `nsolistab{T}(f, x0::Vector{T}; kwargs...) -> x, numdE`
-#
-# # A "modulated jacobian-free Newton-Krylov solver"
-#
-# A Newton-Krylov solver for computing stable equilibria of ẋ = -f(x), i.e.,
-# solutions to f(x) = 0 satisfying Reλ > 0 for all λ ∈ σ(∂f(x)). (The choice
-# of -f as opposed to f is motivated by the gradient flow case.)
-#
-# ## Required Arguments
-#
-# * `f` : evaluate nonlinear system
-# * `x0` : initial condition for search
-#
-# ## Keyword Arguments
-#
-# * `tol = 1e-5`
-# * `maxnumdE = 200`
-# * `maxstep = Inf`
-# * `hfd = 1e-7`
-# * `P = I, precon_prep = (P, x) -> P`
-# * `verbose = 1`
-# * `linesearch = lsforce`
-#
-# ## Output
-#
-# * `x` : solution
-# * `numdE` : number of gradient evaluations
-# """
-# function nsolistab{T}(f, x0::Vector{T};
-#                   tol = 1e-5,
-#                   maxnumdE = 200,
-#                   maxstep = Inf,
-#                   hfd = 1e-7,
-#                   P = I, precon_prep = (P, x) -> P,
-#                   verbose = 1,
-#                   linesearch = lsforce )
-#    debug = verbose > 2
-#    progressmeter = verbose == 1
-#
-#    # initialise some more parameters
-#    d = length(x0)
-#    eta = etamax = 0.5   # 0.9 ???
-#    gamma = 0.9
-#    kmax = min(40, d)
-#    Carmijo = 1e-4
-#    α_old = α = 1.0
-#
-#    # evaluate the initial residual
-#    x = copy(x0)
-#    f0 = f(x)
-#    numdE = 1
-#    res = norm(f0, Inf)
-#
-#    P = precon_prep(P, x)
-#    fnrm = norm(f0)
-#    fnrmo = fnrm
-#    itc = 0
-#
-#    while res > tol && numdE < maxnumdE
-#       rat = fnrm / fnrmo   # this is used for the Eisenstat-Walker thing
-#       itc += 1
-#
-#       p, inner_numdE, success, isnewton =
-#             darnoldi(f0, f, x, -f0, eta * norm(f0), kmax, stabilise;
-#                          P = P, debug = debug, hfd = hfd)
-#
-#       numdE += inner_numdE
-#       if debug; @show isnewton; end
-#
-#       # ~~~~~~~~~~~~~~~~~~ LINESEARCH ~~~~~~~~~~~~~~~~~~~~~~
-#       # output of linesearch will be: α, xt (new x), ft (new dE), nft (norm)
-#       #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-#       if isnewton   # if we are in the Newton regime, then we always try to reduce the residual
-#          iarm = 0
-#          α = αt = 1.0
-#          xt = x + αt * p
-#          ft = f(xt)
-#          numdE += 1
-#          nf0 = norm(f0)
-#          nft = norm(ft)
-#
-#          αm = 1.0  # these have no meaning; just allocations
-#          nfm = 0.0
-#
-#          while nft > (1 - Carmijo * αt) * nf0
-#             if iarm == 0
-#                α *= 0.5
-#             else
-#                α = parab3p( αt, αm, nf0^2, nft^2, nfm^2; sigma0 = 0.1, sigma1 = 0.5 )
-#             end
-#             αt, αm, nfm = α, αt, nft
-#             if αt < 1e-8   # TODO: make this a parameter
-#                error(" Armijo failure, step-size too small")
-#             end
-#
-#             xt = x + αt * p
-#             ft = f(xt)
-#             numdE += 1
-#             nft = norm(ft)
-#             iarm += 1
-#          end
-#          α_old = αt
-#       else
-#          # if we are here, then p is not a newton direction (i.e. an e-val was flipped)
-#          αt, xt, ft, nft, numdE_plus = linesearch(x, p, α_old, nothing, f, f0, I, maxstep, I)
-#          numdE += numdE_plus
-#          α_old = αt
-#       end
-#       if debug; @show αt; end
-#       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-#       # update current configuration and preconditioner
-#       x, f0, fnrm = xt, ft, nft
-#       P = precon_prep(P, x)
-#       res = norm(f0, Inf)
-#       fnrm = norm(f0)     # should be the dual norm!
-#       rat = fnrm/fnrmo
-#
-#       if debug; @show res; end
-#
-#       if res <= tol
-#          return x, numdE
-#       end
-#
-#       # ---------------------------------------------------------
-#       # Adjust eta as per Eisenstat-Walker.   # TODO: make this a flag!
-#       # TODO: check also that we are in the newton regime (what do we do if
-#       # not? probably reset eta?)
-#       # S. C. Eisenstat, H. F. Walker,
-#       # Choosing the forcing terms in an inexact Newton method,
-#       # SIAM J. Sci. Comput. 17 (1996) 16–32.
-#       etaold = eta
-#       etanew = gamma * rat^2
-#       if gamma * etaold^2 > 0.1
-#          etanew = max(etanew, gamma * etaold^2)
-#       end
-#       eta = min(etanew, etamax)
-#       eta = max(eta, 0.5 * tol / fnrm)
-#       # ---------------------------------------------------------
-#    end
-#
-#    if verbose >= 1
-#       warn("NK did not converge within the maximum number of dE evaluations")
-#    end
-#    return x, numdE
-# end
+"""
+`nsolistab{T}(f, x0::Vector{T}; kwargs...) -> x, numdE`
+
+# A "modulated jacobian-free Newton-Krylov solver"
+
+A Newton-Krylov solver for computing stable equilibria of ẋ = -f(x), i.e.,
+solutions to f(x) = 0 satisfying Reλ > 0 for all λ ∈ σ(∂f(x)). (The choice
+of -f as opposed to f is motivated by the gradient flow case.)
+
+## Required Arguments
+
+* `f` : evaluate nonlinear system
+* `x0` : initial condition for search
+
+## Keyword Arguments
+
+* `tol = 1e-5`
+* `maxnumdE = 200`
+* `maxstep = Inf`
+* `hfd = 1e-7`
+* `P = I, precon_prep = (P, x) -> P`
+* `verbose = 1`
+* `linesearch = lsforce`
+
+## Output
+
+* `x` : solution
+* `numdE` : number of gradient evaluations
+"""
+function nsolistab{T}(f, x0::Vector{T};
+                  tol = 1e-5,
+                  maxnumdE = 200,
+                  maxstep = Inf,
+                  hfd = 1e-7,
+                  P = I, precon_prep = (P, x) -> P,
+                  verbose = 1,
+                  linesearch = lsforce )
+   debug = verbose > 2
+   progressmeter = verbose == 1
+
+   # initialise some more parameters
+   d = length(x0)
+   eta = etamax = 0.5   # 0.9 ???
+   gamma = 0.9
+   kmax = min(40, d)
+   Carmijo = 1e-4
+   α_old = α = 1.0
+
+   # evaluate the initial residual
+   x = copy(x0)
+   f0 = f(x)
+   numdE = 1
+   res = norm(f0, Inf)
+
+   P = precon_prep(P, x)
+   fnrm = norm(f0)
+   fnrmo = fnrm
+   itc = 0
+
+   while res > tol && numdE < maxnumdE
+      rat = fnrm / fnrmo   # this is used for the Eisenstat-Walker thing
+      itc += 1
+
+      p, inner_numdE, success, isnewton =
+            darnoldi(f0, f, x, -f0, eta * norm(f0), kmax, stabilise;
+                         P = P, debug = debug, hfd = hfd)
+
+      numdE += inner_numdE
+      if debug; @show isnewton; end
+
+      # ~~~~~~~~~~~~~~~~~~ LINESEARCH ~~~~~~~~~~~~~~~~~~~~~~
+      # output of linesearch will be: α, xt (new x), ft (new dE), nft (norm)
+      #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+      if isnewton   # if we are in the Newton regime, then we always try to reduce the residual
+         iarm = 0
+         α = αt = 1.0
+         xt = x + αt * p
+         ft = f(xt)
+         numdE += 1
+         nf0 = norm(f0)
+         nft = norm(ft)
+
+         αm = 1.0  # these have no meaning; just allocations
+         nfm = 0.0
+
+         while nft > (1 - Carmijo * αt) * nf0
+            if iarm == 0
+               α *= 0.5
+            else
+               α = parab3p( αt, αm, nf0^2, nft^2, nfm^2; sigma0 = 0.1, sigma1 = 0.5 )
+            end
+            αt, αm, nfm = α, αt, nft
+            if αt < 1e-8   # TODO: make this a parameter
+               error(" Armijo failure, step-size too small")
+            end
+
+            xt = x + αt * p
+            ft = f(xt)
+            numdE += 1
+            nft = norm(ft)
+            iarm += 1
+         end
+         α_old = αt
+      else
+         # if we are here, then p is not a newton direction (i.e. an e-val was flipped)
+         αt, xt, ft, nft, numdE_plus = linesearch(x, p, α_old, nothing, f, f0, I, maxstep, I)
+         numdE += numdE_plus
+         α_old = αt
+      end
+      if debug; @show αt; end
+      # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+      # update current configuration and preconditioner
+      x, f0, fnrm = xt, ft, nft
+      P = precon_prep(P, x)
+      res = norm(f0, Inf)
+      fnrm = norm(f0)     # should be the dual norm!
+      rat = fnrm/fnrmo
+
+      if debug; @show res; end
+
+      if res <= tol
+         return x, numdE
+      end
+
+      # ---------------------------------------------------------
+      # Adjust eta as per Eisenstat-Walker.   # TODO: make this a flag!
+      # TODO: check also that we are in the newton regime (what do we do if
+      # not? probably reset eta?)
+      # S. C. Eisenstat, H. F. Walker,
+      # Choosing the forcing terms in an inexact Newton method,
+      # SIAM J. Sci. Comput. 17 (1996) 16–32.
+      etaold = eta
+      etanew = gamma * rat^2
+      if gamma * etaold^2 > 0.1
+         etanew = max(etanew, gamma * etaold^2)
+      end
+      eta = min(etanew, etamax)
+      eta = max(eta, 0.5 * tol / fnrm)
+      # ---------------------------------------------------------
+   end
+
+   if verbose >= 1
+      warn("NK did not converge within the maximum number of dE evaluations")
+   end
+   return x, numdE
+end
