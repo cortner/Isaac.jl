@@ -186,7 +186,6 @@ function dgmres(f0, f, xc, errtol, kmax, reorth = 1, x = zeros(f0); hfd = 1e-7)
 end
 
 
-
 """
 `pushcol(V::Matrix, v::Vector) -> V`:
 append the vector `v` as a column to `V`
@@ -265,7 +264,7 @@ end
 """
 `immutable LanczosMatrix`: (todo: write documentation)
 """
-immutable LanczosMatrix
+struct LanczosMatrix
    V::Matrix{Float64}
    D::Vector{Float64}
    P
@@ -287,7 +286,7 @@ index1(D) = [-abs(D[1]); abs.(D[2:end])]
 "spectrum transformation for `dlanczos` for index-2 saddles"
 index2(D) = [-abs.(D[1:2]); abs.(D[3:end])]
 
-"spectrum transformation for general case"
+"spectrum transformation for general order saddle"
 indexp(D, p::Integer) = [-abs.(D[1:p]); abs.(D[p+1:end])]
 
 
@@ -385,8 +384,8 @@ function dlanczos(f0, f, xc, b, errtol, kmax, transform = identity;
    V = zeros(d,0)      # store the Krylov basis
    AxV = zeros(d, 0)   # store A vⱼ
    Y = zeros(d, 0)     # store P \ A vⱼ
-   Q = Matrix{Float64}()
-   E = Vector{Float64}()
+   Q = Matrix{Float64}(0,0)
+   E = Vector{Float64}(0)
 
    # initialise Krylov subspace; TODO: detect if a vector is in the span of previous ones
    for j = 1:size(V0, 2)
@@ -477,6 +476,7 @@ function dlanczos(f0, f, xc, b, errtol, kmax, transform = identity;
    # warn("`dcg_index1` did not converge within kmax = $(kmax) iterations")
    return x, LanczosMatrix(V * Q, E, P), numf, success, isnewton
 end
+
 
 
 

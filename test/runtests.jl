@@ -1,6 +1,8 @@
 using Isaac
 using Base.Test
 
+srand(1)
+
 isCI = haskey(ENV, "CI")
 notCI = !isCI
 
@@ -9,9 +11,9 @@ println("Running tests for `Isaac.jl`")
 
 include("testproblems.jl")
 include("correctness.jl")
-if notCI
-    include("performance.jl")
-end
+# if notCI
+#     include("performance.jl")
+# end
 include("test_dlanczos.jl")
 include("test_saddle1.jl")
 include("test_minim.jl")

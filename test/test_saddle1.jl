@@ -1,10 +1,8 @@
 
-using SaddleSearch
-using SaddleSearch.TestSets
-using SaddleSearch: numE, numdE, res_trans, res_rot
-using SaddleSearch.TestSets: hessprecond, precond
 using Isaac
-using SaddleSearch: ODE12r, odesolve, IterationLog
+using Isaac.TestSets
+using Isaac.TestSets: precond
+
 
 println("Testing nsolimod for index-1 saddles")
 @testset "nsolidmod-index1" begin
@@ -32,7 +30,7 @@ E, dE = objective(V)
 x0, v0 = ic_dimer(V, :near)
 P = precond(V, x0)
 Iprep = (P, x) -> P
-Pprep = (P, x) -> precond(V, x)
+Pprep = (P, x) -> Isaac.TestSets.precond(V, x)
 xe = []
 
 for (init, precond, precon_prep) in
