@@ -1,3 +1,6 @@
+# TODO: look at  the following reference for E-free linesearch:
+#  Fletcher R. (2005) On the Barzilai-Borwein Method. Applied Optimization,
+#   vol 96. Springer.
 
 # TODO: replace with with LineSearches or alternatively move into LineSearches
 
