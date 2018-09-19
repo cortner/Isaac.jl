@@ -1,8 +1,10 @@
 
 
-path = @__FILE__()[1:end-7]
+path = @__DIR__()
 
-using SaddleSearch, SaddleSearch.TestSets, Isaac, JLD
+using SaddleSearch, Isaac, JLD
+include(Pkg.dir("SaddleSearch") * "/test/testsets.jl")
+using TestSets
 
 V = MullerPotential()
 Energy, Gradient = objective(V)
@@ -11,12 +13,18 @@ d = 2
 
 vecsign(x) = x / norm(x)
 
+"""
+convert a dof-vector (long Vector{Float64}) to a vector of images
+"""
 function dof2vecs(x)
     N = length(x) ÷ d
     x = reshape(x, d, N)
     return [ x[:, n] for n = 1:N ]
 end
 
+"""
+convert a vector of images to a dof vector (long Vector{Float64})
+"""
 function vecs2dof(X)
     x = X[1]
     for n = 2:length(X)
@@ -52,7 +60,7 @@ Pneb(x, μ) = Dfneb(x, k, x->μ*x)
 
 # load a very good starting guess so we can be sure (hope) to be in the
 # region of attraction of Newton's method
-z = JLD.load(path * "near.jld", "z")
+z = JLD.load(path * "/near.jld", "z")
 N = length(z) ÷ d
 
 # z = reshape(z, d, N)
@@ -83,6 +91,9 @@ z_nsoli, numF = Isaac.nsolistab(Fneb, x, tol=1e-5)
 @show numF
 
 
+"""
+block-diagonal preconditioner, modulated to make >0
+"""
 function Pdiag(x)
     N = length(x) ÷ d
     P = zeros(length(x), length(x))
@@ -98,7 +109,7 @@ end
 
 println("Trying P-NSOLI-STAB")
 x = copy(z)
-P = y -> Pdiag(y) + Pneb(y, 0.0)
+P = y -> Pdiag(y) # + Pneb(y, 0.0)
 z_nsoli, numF = Isaac.nsolistab(Fneb, x, tol=1e-5,
             P = P(x), precon_prep = (P_, x) -> P(x))
 @show norm(Fneb(z_nsoli), Inf)
@@ -113,7 +124,6 @@ numF = round(Int, nde[end,2])
 @show numF
 
 
-
 # using Plots
 #
 # J = DFneb(z)
@@ -125,12 +135,12 @@ numF = round(Int, nde[end,2])
 
 
 
-# bad starting guess
-
-d = 2
-z = JLD.load(path * "far.jld", "z")
-
-x = copy(z)
-z_nsoli, numF = Isaac.nsolistab(Fneb, x, tol=1e-5, maxstep = 0.1, verbose = 3)
-@show norm(Fneb(z_nsoli), Inf)
-@show numF
+# # bad starting guess
+#
+# d = 2
+# z = JLD.load(path * "/far.jld", "z")
+#
+# x = copy(z)
+# z_nsoli, numF = Isaac.nsolistab(Fneb, x, tol=1e-5, maxstep = 0.1, verbose = 3)
+# @show norm(Fneb(z_nsoli), Inf)
+# @show numF
