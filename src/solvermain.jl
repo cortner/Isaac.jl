@@ -263,7 +263,7 @@ function nsolistab{T}(f, x0::Vector{T};
 
    # initialise some more parameters
    d = length(x0)
-   eta = etamax = 0.5   # 0.9 ???
+   eta = etamax = 0.9#0.5   # 0.9 ???
    gamma = 0.9
    kmax = min(40, d)
    Carmijo = 1e-4
@@ -285,7 +285,7 @@ function nsolistab{T}(f, x0::Vector{T};
       itc += 1
 
       p, inner_numdE, success, isnewton =
-            darnoldi(f0, y -> f(project(y)), x, -f0, eta * norm(f0), kmax, stabilise;
+            darnoldi(f0, y -> f(project(y)), x, -f0, eta * norm(f0), kmax, identity;
                          P = P, debug = debug, hfd = hfd)
 
       numdE += inner_numdE
@@ -300,7 +300,12 @@ function nsolistab{T}(f, x0::Vector{T};
       # ~~~~~~~~~~~~~~~~~~ LINESEARCH ~~~~~~~~~~~~~~~~~~~~~~
       # output of linesearch will be: α, xt (new x), ft (new dE), nft (norm)
       #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+      # if (dϕ0 <= -0.5 * ϕ0) then this was a newton step
+      # ϕ0 = norm(f(x)) * norm(f(x))
+      # dϕ0 = 2 * dot(f(x + α * p) - f(x), f(x)) / α
+      # @show(dϕ0, ϕ0)
+      # @show((dϕ0 <= 0.5 * ϕ0))
+      # isnewton = (dϕ0 <= 0.5 * ϕ0)
       if isnewton   # if we are in the Newton regime, then we always try to reduce the residual
          iarm = 0
          α = αt = 1.0

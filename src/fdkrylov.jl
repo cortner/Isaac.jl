@@ -634,8 +634,14 @@ function darnoldi( f0, f, xc, b, errtol, kmax, transform = identity;
       #     A ≈ P V V' * Y V' = P V H V'     =>     A⁻¹ ≈ V H⁻¹ V' P⁻¹
       xV = X * (Dmod .\ (X \ (V' * bP)))  # coefficients of x in V
       x, x_old = V * xV, x
+      # if (dϕ0 <= -0.5 * ϕ0) then this was a newton step
+      ϕ0 = norm(f(x)) * norm(f(x))
+      dϕ0 = 2 * dot(f(x + hfd * b) - f(x), f(x)) / hdf
+      @show(dϕ0, ϕ0)
+      @show((dϕ0 <= - 0.5 * ϕ0))
+      isnewton = (dϕ0 <= -0.5 * ϕ0)
       # if Dmod == D then this was a newton step
-      isnewton = (norm(Dmod - D, Inf) < 1e-7)
+      # isnewton = (norm(Dmod - D, Inf) < 1e-7)
       if isnewton
          res = norm(AxV * xV - b)
       end
