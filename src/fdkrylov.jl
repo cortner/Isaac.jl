@@ -636,7 +636,7 @@ function darnoldi( f0, f, xc, b, errtol, kmax, transform = identity;
       x, x_old = V * xV, x
       # if (dϕ0 <= -0.5 * ϕ0) then this was a newton step
       ϕ0 = norm(f(x)) * norm(f(x))
-      dϕ0 = 2 * dot(f(x + hfd * b) - f(x), f(x)) / hdf
+      dϕ0 = 2 * dot(f(x + hfd * b) - f(x), f(x)) / hfd
       @show(dϕ0, ϕ0)
       @show((dϕ0 <= - 0.5 * ϕ0))
       isnewton = (dϕ0 <= -0.5 * ϕ0)
