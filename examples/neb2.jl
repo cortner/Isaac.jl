@@ -109,9 +109,10 @@ end
 
 println("Trying P-NSOLI-STAB")
 x = copy(z)
-P = y -> Pdiag(y) # + Pneb(y, 0.0)
+P = y -> Pdiag(y) + Pneb(y, 0.0)
 z_nsoli, numF = Isaac.nsolistab(Fneb, x, tol=1e-5,
-            P = P(x), precon_prep = (P_, x) -> P(x))
+            P = P(x), precon_prep = (P_, x) -> P(x),
+            verbose = 3)
 @show norm(Fneb(z_nsoli), Inf)
 @show numF
 
