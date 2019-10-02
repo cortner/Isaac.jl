@@ -1,6 +1,6 @@
 name = "Isaac"
-uuid = "37d5470d-be39-5372-83c6-3e18ddf26f4a"
-version = "0.0.1"
+uuid = "c2548312-a4fd-5d16-85d3-38ef7dd54d98"
+version = "0.1.0"
 
 [deps]
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
