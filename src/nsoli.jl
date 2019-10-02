@@ -1,4 +1,6 @@
 
+using LinearAlgebra: norm, dot
+
 export nsoli
 
 
@@ -65,13 +67,13 @@ SOLVING NONLINEAR EQUATIONS WITH NEWTON'S METHOD
  C. T. KELLEY
  2003 / xiv + 104 pages / Softcover / ISBN: 978-0-898715-46-0
 """
-function nsoli{T}(x::Vector{T}, f;
+function nsoli(x::Vector{T}, f;
    atol = 1e-5, rtol = 1e-5, dkrylov = dgmres,
    maxit = 40, lmaxit = 40, etamax = 0.9, reorth = 1,
    alpha = 1e-4, sigma0 = 0.1, sigma1 = 0.5, maxarm = 20, gamma = 0.9,
-   debug = 0 )
+   debug = 0 ) where {T}
 
-   # there was a paremter restart_limit = 20,  >>>> move into defn of dkrylov
+   # there was a parameter restart_limit = 20,  >>>> move into defn of dkrylov
 
    # Initialize some variables
    ierr = 0
@@ -143,7 +145,7 @@ function nsoli{T}(x::Vector{T}, f;
          ffc = nft*nft
          iarm = iarm+1
          if iarm > maxarm
-            warn(" Armijo failure, too many reductions ")
+            @warn(" Armijo failure, too many reductions ")
             ierr = 2
             display(outstat)
             it_hist = it_histx[1:itc+1, :]
@@ -185,6 +187,7 @@ function nsoli{T}(x::Vector{T}, f;
    sol = x
    it_hist = it_histx[1:itc+1, :]
    if debug == 1
+      @info("Debugging information:")
       display(outstat)
       it_hist = it_histx[1:itc+1, :]
    end

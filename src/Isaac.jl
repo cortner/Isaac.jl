@@ -12,8 +12,8 @@ include("fdkrylov.jl")
 # the Newton-Krylov solver based on C T Kelley's nsoli.m
 include("nsoli.jl")
 
-# the main transformed Newton solver
-include("solvermain.jl")
+# # the main transformed Newton solver
+# include("solvermain.jl")
 
 # # interfaces to Optim.jl and NLsolve.jl
 # include("interfaces.jl")

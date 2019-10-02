@@ -11,6 +11,8 @@ Available Testsets:
 module TestSets
 
 using Parameters
+using LinearAlgebra: Symmetric, Diagonal, norm, dot, diagm, diag, I
+using SparseArrays: sparse
 import ForwardDiff
 
 export objective,
@@ -43,7 +45,7 @@ end
 #   TODO: add reference
 # ============================================================================
 
-@with_kw type MullerPotential
+@with_kw struct MullerPotential
    B::Vector{Matrix{Float64}} = [ [ -1 0; 0 -10], [-1 0; 0 -10],
                                     [-6.5 5.5; 5.5 -6.5], [0.7 0.3; 0.3 0.7] ]
    A::Vector{Float64} = [-200, -100, -170, 15]
@@ -74,11 +76,11 @@ end
 # TEST SET: DoubleWell
 # ============================================================================
 
-@with_kw type DoubleWell
-   A::Matrix{Float64} = eye(2)
+@with_kw struct DoubleWell
+   A::Matrix{Float64} = diagm(0 => [1.0, 1.0])
 end
 
-DoubleWell(c::Float64) = DoubleWell( diagm([1.0, c])  )
+DoubleWell(c::Float64) = DoubleWell( diagm(0 => [1.0, c])  )
 
 fdw(r) = [r[1]^2 - 1.0; r[2:end]]
 
@@ -113,7 +115,7 @@ end
 # TEST SET: Lennard-Jones Cluster
 # ============================================================================
 
-@with_kw type LJcluster
+@with_kw struct LJcluster
    ε::Float64 = 0.25
    σ::Float64 = 1.
    ρ_min::Float64 = 1.0
@@ -186,9 +188,9 @@ function vacancy_refconfig(R, bc)
    x = ones(length(t)) * t'
    y = t * ones(length(t))'
    X = A * [x[:] y[:]]'
-   r = sqrt.(sum(abs2, X, 1))
+   r = sqrt.(sum(abs2, X, dims=1))
    Xref = X[:, find(0 .< r .<= R)]
-   r = sqrt.(sum(abs2, Xref, 1))
+   r = sqrt.(sum(abs2, Xref, dims=1))
    I0 = find(r .<= 1.1)[1]
    if I0 != 1
       Xref[:, [1,I0]] = Xref[:, [I0,1]]
@@ -249,7 +251,7 @@ function exp_precond(X::Matrix; rcut = 2.5, α=3.0)
          P[Ij, Ij] += a
       end
    end
-   return sparse(P) + 0.001 * speye(2*nX)
+   return sparse(P) + 0.001 * I
 end
 
 end
@@ -259,7 +261,7 @@ end
 
 `bc = :clamped` is also allowed
 """
-type LJVacancy2D
+struct LJVacancy2D
    R::Float64
    Xref::Matrix{Float64}
    Ifree::Vector{Int}
@@ -268,7 +270,7 @@ end
 LJVacancy2D(; R::Float64 = 5.1, bc=:free) =
    LJVacancy2D(R, LJaux.vacancy_refconfig(R, bc)...)
 
-function dofs2pos{T}(V::LJVacancy2D, r::Vector{T})
+function dofs2pos(V::LJVacancy2D, r::Vector{T}) where {T}
    X = convert(Matrix{T}, V.Xref)
    X[:, V.Ifree] = reshape(r, 2, length(r) ÷ 2)
    return X
@@ -321,97 +323,5 @@ end
 precond(V::LJVacancy2D, x::Vector; kwargs...) =
    pos2dofs(V, LJaux.exp_precond(dofs2pos(V, x), kwargs...))
    # LJaux.exp_precond(dofs2pos(V, x), kwargs...)
-
-
-
-
-# ============================================================================
-# TEST SET: Molecule2D
-# ============================================================================
-#
-#  [B2]
-#      \
-#        [A] - [B1]
-
-@with_kw type Molecule2D
-   k::Float64 = 1.0
-   kab::Float64 = 25.0
-   kbb::Float64 = 5.0
-   rbb::Float64 = √3
-end
-
-function bonds(V::Molecule2D, r)
-   # A is always at [0,0]
-   # B1 at [r1, 0]
-   # B2 at [r2, r3]
-   Rab1 = [r[1],0]
-   Rab2 = [r[2], r[3]]
-   Rbb = Rab1 - Rab2
-   rab1 = norm(Rab1)
-   rab2 = norm(Rab2)
-   rbb = norm(Rab1 - Rab2)
-   return rab1, rab2, rbb, Rab1/rab1, Rab2/rab2, Rbb/rbb
-end
-
-
-function energy(V::Molecule2D, r)
-   rab1, rab2, rbb, Sab1, Sab2, Sbb = bonds(V, r)
-   # AB bonds
-   E = V.kab/2 * ((rab1 - 1)^2 + (rab2 - 1)^2)
-   # AA bond
-   E += V.kbb/2 * (rbb - V.rbb)^2
-   # bond-angle
-   E += V.k/2 * (dot(Sab1, Sab2) + 0.5)^2
-   return E
-end
-
-"Θ = 2π/3 is the minimum, Θ = π near the saddle, Θ=4π/3 is the second minimum"
-function mol2dpath(Θ)
-   Rab1 = [1.0,0.0]
-   Rab2 = [cos(Θ) -sin(Θ); sin(Θ) cos(Θ)] * Rab1
-   return [Rab1[1], Rab2[1], Rab2[2]]
-end
-
-function ic_dimer(V::Molecule2D, case=:near)
-   if case == :near
-      r0 = mol2dpath(π-0.2)
-   elseif case ==:far
-      r0 = mol2dpath(2*π/3 + 0.2)
-   end
-   rs = mol2dpath(π)
-   v0 = (rs-r0) / norm(rs-r0)
-   return r0, v0
-end
-
-"an FF-type preconditioner for Molecule2D"
-function precond(V::Molecule2D, r)
-   # < Pu, u> = ∑_{i=1,2}  kab (uabi ⋅ Sabi)^2 + kbb (ubb ⋅ Sbb)^2
-   #                + bond-angle terms
-   #          = kab (u[1])^2 + kab (Sab2 ⋅ u[2:3])^2 +
-   #             + kbb (Sbb ⋅ [u[2], u[3]-u[1]])^2
-   #             + bond-angle terms
-   #  [u[2], u[3]-u[1]] = [ 0 1 0; -1 0 1] u
-   #
-   # bond-angle terms: Φ = dot(Sab1, Sab2) then
-   #      ~ k  ∑_{i,j} (∂_{Rabi}Φ ⋅ u_{abi}) (∂_{Rabj} ⋅ u_{abj})
-   #      ~ k  ( ∑_i [(I - Sabi ⊗ Sabi) Sabj] ⋅ u_{abi} )^2
-
-   rab1, rab2, rbb, Sab1, Sab2, Sbb = bonds(V, r)
-   P = zeros(3,3)
-
-   # 2-body bonds
-   P[1,1] += V.kab                       # AB1
-   P[2:3,2:3] += V.kab * Sab2 * Sab2'    # AB2
-   Ubb = [0 1 0; -1 0 1]' * Sbb
-   P += V.kbb * Ubb * Ubb'               # BB
-
-   # bond-angle
-   q1 = Sab2 - dot(Sab1, Sab2) * Sab1
-   q2 = Sab1 - dot(Sab1, Sab2) * Sab2
-   q = [q1[1]; q2]
-   P += V.k * (0.9 * q * q' + 0.1 * eye(3))
-
-   return P
-end
 
 end

@@ -1,4 +1,8 @@
 
+import LinearAlgebra
+using LinearAlgebra: norm, dot, I, UniformScaling, Symmetric, eigvals, eigen
+using Printf
+
 export dgmres, dlanczos, darnoldi
 
 
@@ -97,7 +101,7 @@ GMRES linear equation solver for use in Newton-GMRES solver
 * error : vector of residual norms for the history of the iteration
 * total_iters : number of iterations
 """
-function dgmres(f0, f, xc, errtol, kmax, reorth = 1, x = zeros(f0); hfd = 1e-7)
+function dgmres(f0, f, xc, errtol, kmax, reorth = 1, x = zeros(length(f0)); hfd = 1e-7)
    # The right side of the linear equation for the step is -f0.
    b = - f0
    n = length(b)
@@ -108,7 +112,7 @@ function dgmres(f0, f, xc, errtol, kmax, reorth = 1, x = zeros(f0); hfd = 1e-7)
    c = zeros(kmax+1)
    s = zeros(kmax+1)
    rho = norm(r)
-   g = rho * eye(kmax+1, 1)
+   g = rho * Matrix(1.0*I, kmax+1, 1)
    errtol = errtol * norm(b)
    error = Float64[]
 
@@ -203,14 +207,14 @@ end
 diagonalise A, and return sorted eigenvalues and analogously sorted eigenvectors
 """
 function sorted_eig(A)
-   D, Q = eig(A)
+   D, Q = eigen(A)
    I = sortperm(real(D))
    return D[I], Q[:, I]
 end
 
-Base.dot{T}(x, A::UniformScaling{T}, y) = A.λ * dot(x,y)
-Base.dot(x, A::AbstractMatrix, y) = dot(x, A*y)
-Base.norm(P, x) = sqrt(abs(dot(x, P*x)))
+LinearAlgebra.dot(x, A::UniformScaling, y) = A.λ * dot(x,y)
+LinearAlgebra.dot(x, A::AbstractMatrix, y) = dot(x, A*y)
+LinearAlgebra.norm(P, x) = sqrt(abs(dot(x, P*x)))
 dualnorm(P, f) = sqrt(abs(dot(f, P \ f)))
 # nkdualnorm(P, f) = dualnorm(P, f)  # TODO: revisit this!!!
 nkdualnorm(P, f) = norm(f)
@@ -238,7 +242,7 @@ function orthogonalise(w, V::Matrix, P=I; maxiter = 10, ORTHTOL=1e-10)
          w /= norm(P, w)
       else
          w /= norm(P, w)
-         if vecnorm( (P*w)' * V, Inf ) < ORTHTOL
+         if norm( (P*w)' * V, Inf ) < ORTHTOL
             return w
          end
       end
@@ -251,7 +255,7 @@ end
 
 """
 `appendkrylov(V, AxV, Y, v, Hmul, P)`:
-appends [V v], [AxV A*v], [Y P \ A*v]
+appends [V v], [AxV A*v], [Y P \\ A*v]
 """
 function appendkrylov(V, AxV, Y, v, Hmul, P)
    V   = pushcol(V,   v)
@@ -272,9 +276,10 @@ end
 
 Base.length(K::LanczosMatrix) = length(K.D)
 Base.getindex(K::LanczosMatrix, i) = K.D[i], K.V[:,i]
-import Base: *, \, A_mul_B!
+import Base: *, \
+import LinearAlgebra: mul!
 *(K::LanczosMatrix, v) = K.P * (K.V * (K.D .* (K.V' * (K.P * v))))
-A_mul_B!(out::Array{Float64,1}, L::LanczosMatrix, x::Array{Float64,1}) = copy!(out, L * x)
+mul!(out::Array{Float64,1}, L::LanczosMatrix, x::Array{Float64,1}) = copy!(out, L * x)
 \(K::LanczosMatrix, f) = K.V * ( K.D.^(-1) .* (K.V' * f) )
 # rank
 # isnewton
@@ -332,8 +337,8 @@ see also `dirder` and `dirderinf`.
 
 ## KW parameters
 
-* `P` : preconditioner (default: I;  minimally needs to define `*` and `\` )
-* `V0` : initial subspace (default: P \ b)
+* `P` : preconditioner (default: I;  minimally needs to define `*` and `\\` )
+* `V0` : initial subspace (default: P \\ b)
 * `eigatol`, `eigrtol`: tolerance on the first eigenvalue
 * `debug`: show debug information (true/false)
 * `hfd` : finite-difference parameter
@@ -384,8 +389,8 @@ function dlanczos(f0, f, xc, b, errtol, kmax, transform = identity;
    V = zeros(d,0)      # store the Krylov basis
    AxV = zeros(d, 0)   # store A vⱼ
    Y = zeros(d, 0)     # store P \ A vⱼ
-   Q = Matrix{Float64}(0,0)
-   E = Vector{Float64}(0)
+   Q = Matrix{Float64}(undef, 0,0)
+   E = Vector{Float64}(undef, 0)
 
    # initialise Krylov subspace; TODO: detect if a vector is in the span of previous ones
    for j = 1:size(V0, 2)
@@ -552,8 +557,8 @@ see also `dirder` and `dirderinf`.
 
 ## KW parameters
 
-* `P` : preconditioner (default: I;  minimally needs to define `*` and `\` )
-* `V0` : initial subspace (default: P \ b)
+* `P` : preconditioner (default: I;  minimally needs to define `*` and `\\` )
+* `V0` : initial subspace (default: P \\ b)
 * `debug`: show debug information (true/false)
 * `hfd` : finite-difference parameter
 * `dirder` : function to compute the directional derivative; see
@@ -596,8 +601,8 @@ function darnoldi( f0, f, xc, b, errtol, kmax, transform = identity;
    V = zeros(d,0)      # store the Krylov basis
    AxV = zeros(d, 0)   # store A vⱼ
    Y = zeros(d, 0)     # store P \ A vⱼ
-   X = Matrix{Complex128}()     # H = X * D * inv(X) becomes
-   Dmod = Vector{Complex128}()  #    Hmod = X * Dmod * inv(X)
+   X = Matrix{ComplexF64}()     # H = X * D * inv(X) becomes
+   Dmod = Vector{ComplexF64}()  #    Hmod = X * Dmod * inv(X)
 
    # initialise Krylov subspace;
    for j = 1:size(V0, 2)
@@ -626,7 +631,7 @@ function darnoldi( f0, f, xc, b, errtol, kmax, transform = identity;
       n = size(V, 2)
       H = V' * Y
       # make the specified spectrum transformation
-      D, X = eig(H)
+      D, X = eigen(H)
       Dmod = transform(D)
       # residual estimate for the old x
       res = norm(  P * (V * (X * (Dmod .* (X \ (V'*x))))) - b )
