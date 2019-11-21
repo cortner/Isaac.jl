@@ -107,8 +107,8 @@ function dgmres(f0, f, xc, errtol, kmax, reorth = 1, x = zeros(length(f0)); hfd 
    n = length(b)
    r = - dirder(xc, x, f, f0, hfd) - f0
 
-   h = zeros(kmax, kmax)
-   v = zeros(n, kmax)
+   h = zeros(kmax+1, kmax+1)
+   v = zeros(n, kmax+1)
    c = zeros(kmax+1)
    s = zeros(kmax+1)
    rho = norm(r)
@@ -129,7 +129,7 @@ function dgmres(f0, f, xc, errtol, kmax, reorth = 1, x = zeros(length(f0)); hfd 
    k = 0
 
    # GMRES iteration
-   while rho > errtol && k < kmax
+   while rho > errtol && k < kmax 
       k = k+1;
 
       # Call directional derivative function.
